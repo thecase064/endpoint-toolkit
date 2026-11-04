@@ -1,6 +1,11 @@
 {
   "name": "Endpoint Toolkit",
-  "categories": ["Build", "Repair", "Diagnose", "Report"],
+  "categories": [
+    "Build",
+    "Repair",
+    "Diagnose",
+    "Report"
+  ],
   "tools": [
     {
       "id": "new-device-setup",
@@ -8,12 +13,23 @@
       "category": "Build",
       "path": "Tools/NewDeviceSetup/Invoke-NewDeviceSetup.ps1",
       "command": "Invoke-NewDeviceSetup",
-      "description": "McAfee removal, OEM debloat, M365 Apps reinstall, Chrome + Reader. Unattended.",
+      "description": "McAfee removal, OEM debloat, M365 Apps reinstall, Chrome + Reader, hostname shortcut. Unattended.",
       "admin": true,
       "mode": "child",
       "confirm": "Runs the full build chain (15-30+ min) and REBOOTS the machine at the end.",
       "prompts": [
-        { "param": "SkipReboot", "type": "switch", "prompt": "Skip the automatic reboot at the end?", "default": false }
+        {
+          "param": "SkipReboot",
+          "type": "switch",
+          "prompt": "Skip the automatic reboot at the end?",
+          "default": false
+        },
+        {
+          "param": "SkipHostnameShortcut",
+          "type": "switch",
+          "prompt": "Skip the Hostname desktop shortcut?",
+          "default": false
+        }
       ]
     },
     {
@@ -25,7 +41,10 @@
       "description": "Strips Store, MSI and EXE McAfee preloads. Exit 3010 = removed, reboot.",
       "admin": true,
       "mode": "child",
-      "successCodes": [0, 3010]
+      "successCodes": [
+        0,
+        3010
+      ]
     },
     {
       "id": "oem-debloat",
@@ -37,8 +56,18 @@
       "admin": true,
       "mode": "child",
       "prompts": [
-        { "param": "DryRun", "type": "switch", "prompt": "Dry run only (log what would go, change nothing)?", "default": true },
-        { "param": "Force",  "type": "switch", "prompt": "Force silent uninstall of EXE apps with no known silent switch?", "default": false }
+        {
+          "param": "DryRun",
+          "type": "switch",
+          "prompt": "Dry run only (log what would go, change nothing)?",
+          "default": true
+        },
+        {
+          "param": "Force",
+          "type": "switch",
+          "prompt": "Force silent uninstall of EXE apps with no known silent switch?",
+          "default": false
+        }
       ]
     },
     {
@@ -52,7 +81,16 @@
       "mode": "child",
       "confirm": "Removes ALL installed Office and reinstalls (3-4 GB download).",
       "prompts": [
-        { "param": "ProductID", "type": "choice", "prompt": "Licence type", "options": ["O365BusinessRetail", "O365ProPlusRetail"], "default": "O365BusinessRetail" }
+        {
+          "param": "ProductID",
+          "type": "choice",
+          "prompt": "Licence type",
+          "options": [
+            "O365BusinessRetail",
+            "O365ProPlusRetail"
+          ],
+          "default": "O365BusinessRetail"
+        }
       ]
     },
     {
@@ -65,7 +103,79 @@
       "admin": true,
       "mode": "child",
       "prompts": [
-        { "param": "Apps", "type": "choice", "prompt": "Install which", "options": ["Both", "Chrome", "Reader"], "default": "Both" }
+        {
+          "param": "Apps",
+          "type": "choice",
+          "prompt": "Install which",
+          "options": [
+            "Both",
+            "Chrome",
+            "Reader"
+          ],
+          "default": "Both"
+        }
+      ]
+    },
+    {
+      "id": "hostname-shortcut",
+      "name": "Hostname desktop shortcut",
+      "category": "Build",
+      "path": "Tools/HostnameShortcut/New-HostnameShortcut.ps1",
+      "command": "New-HostnameShortcut",
+      "description": "Desktop shortcut that shows the computer name. For \"what's my PC called?\" calls.",
+      "admin": false,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "AllUsers",
+          "type": "switch",
+          "prompt": "Put it on the Public desktop for all users (needs admin)?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "driver-export",
+      "name": "Driver export (before a wipe)",
+      "category": "Build",
+      "path": "Tools/DriverExport/Export-DeviceDriver.ps1",
+      "command": "Export-DeviceDriver",
+      "description": "Backs up every third-party driver with a manifest and restore note.",
+      "admin": true,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Destination",
+          "type": "string",
+          "prompt": "Export folder (blank = C:\\DriverExport\\<PC>_<model>_<date>)"
+        },
+        {
+          "param": "Zip",
+          "type": "switch",
+          "prompt": "Zip it into one file as well?",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "driver-import",
+      "name": "Driver import (from an export)",
+      "category": "Build",
+      "path": "Tools/DriverExport/Export-DeviceDriver.ps1",
+      "description": "Installs every driver from a previous export folder or .zip with pnputil.",
+      "admin": true,
+      "mode": "child",
+      "successCodes": [
+        0,
+        3010
+      ],
+      "prompts": [
+        {
+          "param": "ImportFrom",
+          "type": "string",
+          "prompt": "Export folder or .zip to install from",
+          "required": true
+        }
       ]
     },
     {
@@ -77,7 +187,81 @@
       "description": "DISM RestoreHealth, SFC /scannow, DISM component cleanup.",
       "admin": true,
       "mode": "child",
-      "successCodes": [0, 3010]
+      "successCodes": [
+        0,
+        3010
+      ]
+    },
+    {
+      "id": "windows-update-reset",
+      "name": "Windows Update reset",
+      "category": "Repair",
+      "path": "Tools/WindowsUpdateReset/Reset-WindowsUpdate.ps1",
+      "command": "Reset-WindowsUpdate",
+      "description": "Stops update services, sets aside SoftwareDistribution and catroot2, restarts, rescans.",
+      "admin": true,
+      "mode": "child",
+      "confirm": "Renames SoftwareDistribution and catroot2. Update history in Settings starts empty (installed updates stay).",
+      "successCodes": [
+        0,
+        3010
+      ],
+      "prompts": [
+        {
+          "param": "ResetNetwork",
+          "type": "switch",
+          "prompt": "Also reset Winsock (only if updates fail to download at all; needs reboot)?",
+          "default": false
+        },
+        {
+          "param": "RemoveOldCopies",
+          "type": "switch",
+          "prompt": "Delete .old copies left by previous resets?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "entra-intune-health",
+      "name": "Entra / Intune health check",
+      "category": "Diagnose",
+      "path": "Tools/EntraIntuneHealth/Get-EntraIntuneHealth.ps1",
+      "command": "Get-EntraIntuneHealth",
+      "description": "Join state, PRT, MDM enrolment, certs, last check-in, IME, event errors, endpoints.",
+      "admin": false,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Sync",
+          "type": "switch",
+          "prompt": "Trigger an Intune sync after the checks (needs admin)?",
+          "default": false
+        },
+        {
+          "param": "CollectLogs",
+          "type": "switch",
+          "prompt": "Bundle logs into a zip for escalation (needs admin)?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "device-inventory",
+      "name": "Device inventory (hardware + OS)",
+      "category": "Diagnose",
+      "path": "Tools/DeviceInventory/Get-DeviceInventory.ps1",
+      "command": "Get-DeviceInventory",
+      "description": "Model, serial, RAM sticks, disks and wear, monitors, battery, network, TPM.",
+      "admin": false,
+      "mode": "process",
+      "prompts": [
+        {
+          "param": "Html",
+          "type": "switch",
+          "prompt": "Write an HTML report as well?",
+          "default": true
+        }
+      ]
     },
     {
       "id": "disk-usage-report",
@@ -89,7 +273,11 @@
       "admin": false,
       "mode": "process",
       "prompts": [
-        { "param": "Path", "type": "string", "prompt": "Path to scan (blank = system drive)" }
+        {
+          "param": "Path",
+          "type": "string",
+          "prompt": "Path to scan (blank = system drive)"
+        }
       ]
     },
     {
@@ -122,10 +310,57 @@
       "admin": false,
       "mode": "child",
       "prompts": [
-        { "param": "TenantId",              "type": "string", "prompt": "Tenant ID or domain (blank = pick at sign-in)" },
-        { "param": "ClientName",            "type": "string", "prompt": "Client name for the filename (blank = tenant name)" },
-        { "param": "IncludeLastSignIn",     "type": "switch", "prompt": "Include last sign-in (needs AuditLog.Read.All)?", "default": false },
-        { "param": "InstallMissingModules", "type": "switch", "prompt": "Install missing Graph / ImportExcel modules?", "default": false }
+        {
+          "param": "TenantId",
+          "type": "string",
+          "prompt": "Tenant ID or domain (blank = pick at sign-in)"
+        },
+        {
+          "param": "ClientName",
+          "type": "string",
+          "prompt": "Client name for the filename (blank = tenant name)"
+        },
+        {
+          "param": "IncludeLastSignIn",
+          "type": "switch",
+          "prompt": "Include last sign-in (needs AuditLog.Read.All)?",
+          "default": false
+        },
+        {
+          "param": "InstallMissingModules",
+          "type": "switch",
+          "prompt": "Install missing Graph / ImportExcel modules?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "exchange-planner-usage",
+      "name": "Exchange + Planner usage report",
+      "category": "Report",
+      "path": "Tools/ExchangePlannerUsage/Get-ExchangePlannerUsage.ps1",
+      "command": "Get-ExchangePlannerUsage",
+      "description": "Who is licensed for Exchange / Planner but not using it. CSV + Excel.",
+      "admin": false,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "TenantId",
+          "type": "string",
+          "prompt": "Tenant domain, e.g. contoso.onmicrosoft.com"
+        },
+        {
+          "param": "UseGDAP",
+          "type": "switch",
+          "prompt": "Connect via GDAP (partner access)?",
+          "default": false
+        },
+        {
+          "param": "SkipSignInLogs",
+          "type": "switch",
+          "prompt": "Skip the Planner sign-in log scan (faster on big tenants)?",
+          "default": false
+        }
       ]
     }
   ]

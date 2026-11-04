@@ -3,7 +3,7 @@
     Master "run it and leave it" deployment script for new devices.
 
 .DESCRIPTION
-    Chains the four existing per-task scripts in one unattended pass, in this order:
+    Chains the existing per-task scripts in one unattended pass, in this order:
 
       1. McAfee Nuke   (McAfeeRemoval\AVNuke.ps1)                - removes McAfee first,
                                                                     since its web-protection /
@@ -18,6 +18,9 @@
                                                                     M365 Apps (Business license).
       4. Adobe Chrome  (ChromeReader\Install-ChromeAndReader.ps1)- installs Chrome + hardened
                                                                     Adobe Acrobat Reader.
+      5. Hostname      (HostnameShortcut\New-HostnameShortcut.ps1 -AllUsers) - "Hostname" shortcut
+                                                                    on the Public desktop, for
+                                                                    "what's my computer called?"
 
     Each step runs as its own child PowerShell process (so none of their internal
     Start-Transcript / $ErrorActionPreference / variable state can collide with this
@@ -34,6 +37,9 @@
     Run everything but skip the automatic reboot at the end (just logs that one
     is recommended). Useful for testing this master script itself.
 
+.PARAMETER SkipHostnameShortcut
+    Don't put the Hostname shortcut on the Public desktop.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\Invoke-NewDeviceSetup.ps1
 
@@ -47,7 +53,8 @@
 #Requires -RunAsAdministrator
 [CmdletBinding()]
 param(
-    [switch]$SkipReboot
+    [switch]$SkipReboot,
+    [switch]$SkipHostnameShortcut
 )
 
 $ErrorActionPreference = 'Continue'
@@ -125,6 +132,13 @@ $results += Invoke-Step -Name 'Microsoft 365 Reset' `
 $results += Invoke-Step -Name 'Chrome + Adobe Reader Install' `
     -ScriptPath (Join-Path $Root 'ChromeReader\Install-ChromeAndReader.ps1') `
     -SuccessCodes @(0)
+
+if (-not $SkipHostnameShortcut) {
+    $results += Invoke-Step -Name 'Hostname Desktop Shortcut' `
+        -ScriptPath (Join-Path $Root 'HostnameShortcut\New-HostnameShortcut.ps1') `
+        -ArgumentList @('-AllUsers') `
+        -SuccessCodes @(0)
+}
 
 Write-MasterLog ''
 Write-MasterLog ('=' * 60)

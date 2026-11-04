@@ -135,7 +135,7 @@ $env:ETK_TEST_OUT = $outFile
         prompts = @(
             [pscustomobject]@{ param = 'Name'; type = 'choice'; prompt = 'Pick'; options = @('Alpha', 'Beta Gamma'); default = 'Alpha' }
             [pscustomobject]@{ param = 'Flag'; type = 'switch'; prompt = 'Flag?'; default = $false }
-            [pscustomobject]@{ param = 'Path'; type = 'string'; prompt = 'Path' }
+            [pscustomobject]@{ param = 'Path'; type = 'string'; prompt = 'Path'; required = $true }
         )
     }
     $script:Tools += [pscustomobject]@{
@@ -165,8 +165,8 @@ $fixtureNumber = (@(& $mod {
 }).IndexOf('fixture-child')) + 1
 Assert ($fixtureNumber -gt 0) "fixture appears in the menu as option $fixtureNumber"
 
-# Junk, then the fixture: choice 2, flag yes, path blank, Enter back to menu, quit.
-$answers = @('nonsense', '999', "$fixtureNumber", '2', 'y', '', '', 'q')
+# Junk, then the fixture: choice 2, flag yes, required path left blank once then given, Enter back to menu, quit.
+$answers = @('nonsense', '999', "$fixtureNumber", '2', 'y', '', 'C:\Req Dir', '', 'q')
 & $mod {
     param($a)
     $script:TestAnswers = [Collections.Queue]::new()
@@ -176,7 +176,8 @@ $answers = @('nonsense', '999', "$fixtureNumber", '2', 'y', '', '', 'q')
 
 $menuOut = & { Show-EndpointToolkit } 6>&1 | Out-String
 $got = Get-Content -LiteralPath $outFile -Raw | ConvertFrom-Json
-Assert ($got.Name -eq 'Beta Gamma' -and $got.Flag -and -not $got.Path) 'menu: picked tool ran with the chosen options'
+Assert ($got.Name -eq 'Beta Gamma' -and $got.Flag) 'menu: picked tool ran with the chosen options'
+Assert ($got.Path -eq 'C:\Req Dir') "menu: required prompt re-asked until answered ('$($got.Path)')"
 Assert ((& $mod { $script:TestAnswers.Count }) -eq 0) 'menu: consumed every answer and quit cleanly'
 Assert ($menuOut -match 'ENDPOINT TOOLKIT v' + [regex]::Escape($psd1.ModuleVersion)) 'menu: banner shows the module version'
 Remove-Item -LiteralPath $outFile -ErrorAction SilentlyContinue

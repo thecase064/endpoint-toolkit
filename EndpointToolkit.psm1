@@ -119,6 +119,10 @@ function Read-ToolkitToolOption {
             }
             default {
                 $answer = Read-ToolkitInput "  $($p.prompt)"
+                while ($p.required -and [string]::IsNullOrWhiteSpace($answer)) {
+                    Write-Host '  This one is required.' -ForegroundColor Yellow
+                    $answer = Read-ToolkitInput "  $($p.prompt)"
+                }
                 if (-not [string]::IsNullOrWhiteSpace($answer)) { $params[$p.param] = $answer.Trim() }
                 elseif ($p.default) { $params[$p.param] = $p.default }
             }

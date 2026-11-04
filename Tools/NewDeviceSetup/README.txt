@@ -1,12 +1,13 @@
 NEW DEVICE SETUP - MASTER SCRIPT
 =================================
 
-Runs all four deployment steps back-to-back, unattended:
+Runs all five deployment steps back-to-back, unattended:
 
   1. McAfee Nuke   - removes McAfee
   2. Debloat       - strips OEM bloat / consumer apps, applies tweaks
   3. 365 Nuke      - removes old Office, installs clean M365 Apps (Business)
   4. Adobe Chrome  - installs Chrome + hardened Adobe Acrobat Reader
+  5. Hostname      - "Hostname" shortcut on the Public desktop (skip with -SkipHostnameShortcut)
 
 Then reboots automatically (60-second cancellable countdown).
 
@@ -27,10 +28,10 @@ goes. Don't close the window.
 
 BEFORE YOU RUN IT
 -----------------
-- Must stay inside the toolkit's Tools folder - it calls the four
-  sub-scripts from its sibling folders (e.g. "..\McAfeeRemoval\AVNuke.ps1").
-  If you move it, take the four folders ("McAfeeRemoval", "OEMDebloat",
-  "M365Reset", "ChromeReader") with it.
+- Must stay inside the toolkit's Tools folder - it calls the sub-scripts
+  from its sibling folders (e.g. "..\McAfeeRemoval\AVNuke.ps1").
+  If you move it, take the five folders ("McAfeeRemoval", "OEMDebloat",
+  "M365Reset", "ChromeReader", "HostnameShortcut") with it.
 - Needs an elevated (Administrator) PowerShell session - it will refuse to
   run otherwise.
 - Needs internet access - steps 3 and 4 download from Microsoft's and
@@ -51,11 +52,13 @@ WHAT IT DOES NOT DO
   that needs a manual look.
 
 
-OPTIONAL PARAMETER
--------------------
--SkipReboot   Runs all four steps as normal but skips the automatic reboot
+OPTIONAL PARAMETERS
+--------------------
+-SkipReboot   Runs all the steps as normal but skips the automatic reboot
               at the end (just prints that one is recommended). Useful if
               you want to review everything before restarting yourself.
+
+-SkipHostnameShortcut   Leaves the Hostname desktop shortcut out.
 
 Example:
   powershell -ExecutionPolicy Bypass -File .\Invoke-NewDeviceSetup.ps1 -SkipReboot

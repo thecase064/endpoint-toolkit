@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml)
 
-A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, repair a broken one, find out where the disk space went, cut through event log noise and report on M365 licensing. You can run it from a menu, as a module, or with a single line pasted into any machine. No USB stick, nothing to copy across.
+A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, repair a broken one, check its Entra and Intune health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a menu, as a module, or with a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.0.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.1.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -16,17 +16,24 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, re
      3  OEM debloat (HP / Dell)                       admin
      4  M365 Apps reset + reinstall                   admin
      5  Chrome + Adobe Reader install                 admin
+     6  Hostname desktop shortcut
+     7  Driver export (before a wipe)                 admin
+     8  Driver import (from an export)                admin
 
    REPAIR
-     6  Windows repair checks (DISM + SFC)            admin
+     9  Windows repair checks (DISM + SFC)            admin
+    10  Windows Update reset                          admin
 
    DIAGNOSE
-     7  Disk usage report (HTML)
-     8  Disk usage browser (GUI)                      window
-     9  Event triage (GUI)                            window
+    11  Entra / Intune health check
+    12  Device inventory (hardware + OS)
+    13  Disk usage report (HTML)
+    14  Disk usage browser (GUI)                      window
+    15  Event triage (GUI)                            window
 
    REPORT
-    10  M365 licence report (Excel)
+    16  M365 licence report (Excel)
+    17  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -43,7 +50,7 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.0.0` |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.1.0` |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` |
@@ -52,16 +59,22 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 
 | | Tool | What it does | Command |
 |---|---|---|---|
-| **Build** | [New device setup](Tools/NewDeviceSetup) | Chains McAfee removal, debloat, M365 reinstall and Chrome + Reader in one unattended pass, then reboots. Cut a new-laptop build from over half a day to under two hours. | `Invoke-NewDeviceSetup` |
+| **Build** | [New device setup](Tools/NewDeviceSetup) | Chains McAfee removal, debloat, M365 reinstall, Chrome + Reader and a hostname shortcut in one unattended pass, then reboots. Cut a new-laptop build from over half a day to under two hours. | `Invoke-NewDeviceSetup` |
 | | [McAfee removal](Tools/McAfeeRemoval) | Removes the Store, MSI and EXE forms of Dell's McAfee preload. Intune / RMM-friendly exit codes. | `Remove-McAfee` |
 | | [OEM debloat](Tools/OEMDebloat) | Strips HP / Dell consumer bloat while keeping SupportAssist, HP Support Assistant and hotkey drivers. List-driven, with `-DryRun`. | `Invoke-BuildDebloat` |
 | | [M365 Apps reset](Tools/M365Reset) | ODT removal of every Office install (OEM stubs, language packs, MSI), then a clean M365 Apps install. | `Reset-M365Apps` |
 | | [Chrome + Reader](Tools/ChromeReader) | Chrome Enterprise MSI and the offline Reader installer, with Reader's cloud, AI and upsell features locked down by policy. | `Install-ChromeAndReader` |
+| | [Hostname shortcut](Tools/HostnameShortcut) | Desktop shortcut that shows the computer name, for the "what's my PC called?" call. | `New-HostnameShortcut` |
+| | [Driver export / import](Tools/DriverExport) | Backs up every third-party driver before a wipe, with a manifest, machine details and a restore note. Optionally zipped. `-ImportFrom` puts them back. | `Export-DeviceDriver` |
 | **Repair** | [Windows repair checks](Tools/WindowsRepair) | DISM RestoreHealth, SFC, DISM component cleanup, with progress and a clear finish. | `Invoke-WindowsRepairChecks` |
-| **Diagnose** | [Disk usage report](Tools/DiskUsage) | TreeSize-style scan with no install or licence: biggest folders by their own content, biggest files, known cleanup targets flagged safe/caution, self-contained HTML report. Works over `Invoke-Command`. | `Get-DiskUsageReport` |
+| | [Windows Update reset](Tools/WindowsUpdateReset) | Stops the update services, sets aside SoftwareDistribution and catroot2 (renamed, not deleted), restarts and rescans. Flags the usual real causes first: pending reboot, dead WSUS, low disk. | `Reset-WindowsUpdate` |
+| **Diagnose** | [Entra / Intune health check](Tools/EntraIntuneHealth) | Join state, device auth, PRT, MDM enrolment, Intune certificate expiry, last check-in, push service, IME, event log errors and endpoint reachability, each with a fix hint. Can force a sync or zip the logs for escalation. Exit code 1 on failure, so it doubles as a remediation detection script. | `Get-EntraIntuneHealth` |
+| | [Device inventory](Tools/DeviceInventory) | Model, serial, BIOS, OS build, every RAM stick, disks with health and wear, monitors with serials, battery wear, network, TPM and Secure Boot. Console, HTML or JSON. | `Get-DeviceInventory` |
+| | [Disk usage report](Tools/DiskUsage) | TreeSize-style scan with no install or licence: biggest folders by their own content, biggest files, known cleanup targets flagged safe/caution, self-contained HTML report. Works over `Invoke-Command`. | `Get-DiskUsageReport` |
 | | [Disk usage browser](Tools/DiskUsage) | Live WPF folder-size browser. Read-only. | `Show-DiskUsageGui` |
 | | [Event triage](Tools/EventTriage) | WPF front end that groups event logs by provider + ID, mutes known noise, pulls context around an event and builds a redacted AI troubleshooting prompt. Local or remote. | `Start-EventTriage` |
 | **Report** | [M365 licence report](Tools/M365LicenseReport) | Multi-tenant Microsoft Graph report to Excel: users, licence detail, SKU summary, pivot, reclaim candidates, unlicensed users. | `Get-M365LicenseReport` |
+| | [Exchange + Planner usage](Tools/ExchangePlannerUsage) | Who's licensed for Exchange or Planner but not using them: mail activity, Planner audit events and app sign-ins per user. Handles concealed report names and GDAP. | `Get-ExchangePlannerUsage` |
 
 Each folder has the tool's own guide.
 
@@ -72,10 +85,12 @@ Every tool is also a command with the script's own parameters, tab completion an
 ```powershell
 Import-Module EndpointToolkit
 
+Get-EntraIntuneHealth -Sync
+Get-DeviceInventory -Html
 Get-DiskUsageReport -Path D:\ -TopFolders 50 -PassThru
 Get-M365LicenseReport -TenantId contoso.onmicrosoft.com -ClientName 'Contoso' -IncludeLastSignIn
+Export-DeviceDriver -Destination E:\Drivers -Zip
 Invoke-NewDeviceSetup -SkipReboot
-Invoke-BuildDebloat -DryRun
 
 Get-ToolkitTool | Format-Table Id, Name, Admin, Mode
 Get-Help Get-DiskUsageReport -Full
