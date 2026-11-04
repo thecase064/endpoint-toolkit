@@ -40,8 +40,9 @@ function Get-ScriptParameterName {
     @($ast.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath })
 }
 
-$scripts = Get-ChildItem -LiteralPath $root -Recurse -File -Include *.ps1, *.psm1, *.psd1 |
-    Where-Object { $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' }
+# Filter on Extension rather than -Include: Windows PowerShell 5.1 ignores -Include alongside -LiteralPath.
+$scripts = Get-ChildItem -LiteralPath $root -Recurse -File -Force |
+    Where-Object { @('.ps1', '.psm1', '.psd1') -contains $_.Extension -and $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' }
 
 # ------------------------------------------------------------------------------------------------
 Write-Host "`nParse" -ForegroundColor Cyan
@@ -198,7 +199,7 @@ if (Test-Path -LiteralPath $localFile) {
 # Known-safe hits: the module's own GUID, and Adobe's public CDN key for Reader version lookups.
 $allow = @([regex]::Escape($psd1.GUID), 'api_key=dc-get-adobereader-cdn')
 
-$files = Get-ChildItem -LiteralPath $root -Recurse -File |
+$files = Get-ChildItem -LiteralPath $root -Recurse -File -Force |
     Where-Object { $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' -and $_.Name -ne 'leak-patterns.local.txt' -and $_.Name -ne 'Test-Repo.ps1' }
 foreach ($pat in $patterns) {
     $hits = foreach ($f in $files) {

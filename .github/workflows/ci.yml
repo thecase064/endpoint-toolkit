@@ -5,17 +5,22 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Repo checks (${{ matrix.shell }})
+  test-windows-powershell:
+    name: Tests (Windows PowerShell 5.1)
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shell: [powershell, pwsh]   # Windows PowerShell 5.1 and PowerShell 7
     steps:
       - uses: actions/checkout@v4
       - name: Parse, manifest, module, argument and menu tests
-        shell: ${{ matrix.shell }}
+        shell: powershell
+        run: ./tests/Test-Repo.ps1
+
+  test-pwsh:
+    name: Tests (PowerShell 7)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse, manifest, module, argument and menu tests
+        shell: pwsh
         run: ./tests/Test-Repo.ps1
 
   analyze:
