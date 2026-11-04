@@ -222,6 +222,24 @@
       ]
     },
     {
+      "id": "quick-triage",
+      "name": "Quick triage (first five minutes)",
+      "category": "Diagnose",
+      "path": "Tools/QuickTriage/Invoke-QuickTriage.ps1",
+      "command": "Invoke-QuickTriage",
+      "description": "Device, uptime, reboot, disk, crashes, updates, AV, Entra/Intune and network on one page, problems first.",
+      "admin": false,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Html",
+          "type": "switch",
+          "prompt": "Write the one-page HTML report too?",
+          "default": true
+        }
+      ]
+    },
+    {
       "id": "entra-intune-health",
       "name": "Entra / Intune health check",
       "category": "Diagnose",

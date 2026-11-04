@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 - 2026-11-04
+
+- **Quick triage** (`Invoke-QuickTriage`): the first five minutes of any ticket in one go. Device details, uptime (and whether Fast Startup is hiding it), pending reboot, free space and disk health, battery wear, Entra/Intune health, blue screens, unexpected shutdowns and app crashes, last update, antivirus and Defender state, memory and CPU, gateway and DNS. Problems come first, worst first, each with a next step, plus a one-line summary to paste into the ticket. Console and one-page HTML. Builds on the inventory and Entra/Intune tools rather than duplicating them.
+
 ## 1.1.0 - 2026-11-04
 
 New tools:

@@ -6,7 +6,7 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, re
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.1.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.2.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -25,15 +25,16 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, re
     10  Windows Update reset                          admin
 
    DIAGNOSE
-    11  Entra / Intune health check
-    12  Device inventory (hardware + OS)
-    13  Disk usage report (HTML)
-    14  Disk usage browser (GUI)                      window
-    15  Event triage (GUI)                            window
+    11  Quick triage (first five minutes)
+    12  Entra / Intune health check
+    13  Device inventory (hardware + OS)
+    14  Disk usage report (HTML)
+    15  Disk usage browser (GUI)                      window
+    16  Event triage (GUI)                            window
 
    REPORT
-    16  M365 licence report (Excel)
-    17  Exchange + Planner usage report
+    17  M365 licence report (Excel)
+    18  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -50,7 +51,7 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.1.0` |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.2.0` |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` |
@@ -68,7 +69,8 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 | | [Driver export / import](Tools/DriverExport) | Backs up every third-party driver before a wipe, with a manifest, machine details and a restore note. Optionally zipped. `-ImportFrom` puts them back. | `Export-DeviceDriver` |
 | **Repair** | [Windows repair checks](Tools/WindowsRepair) | DISM RestoreHealth, SFC, DISM component cleanup, with progress and a clear finish. | `Invoke-WindowsRepairChecks` |
 | | [Windows Update reset](Tools/WindowsUpdateReset) | Stops the update services, sets aside SoftwareDistribution and catroot2 (renamed, not deleted), restarts and rescans. Flags the usual real causes first: pending reboot, dead WSUS, low disk. | `Reset-WindowsUpdate` |
-| **Diagnose** | [Entra / Intune health check](Tools/EntraIntuneHealth) | Join state, device auth, PRT, MDM enrolment, Intune certificate expiry, last check-in, push service, IME, event log errors and endpoint reachability, each with a fix hint. Can force a sync or zip the logs for escalation. Exit code 1 on failure, so it doubles as a remediation detection script. | `Get-EntraIntuneHealth` |
+| **Diagnose** | [Quick triage](Tools/QuickTriage) | The first five minutes of any ticket on one page: device, uptime, pending reboot, disk space and health, crashes, updates, antivirus, Entra/Intune, memory and network. Problems first, each with a next step, plus a one-line summary for the ticket. | `Invoke-QuickTriage` |
+| | [Entra / Intune health check](Tools/EntraIntuneHealth) | Join state, device auth, PRT, MDM enrolment, Intune certificate expiry, last check-in, push service, IME, event log errors and endpoint reachability, each with a fix hint. Can force a sync or zip the logs for escalation. Exit code 1 on failure, so it doubles as a remediation detection script. | `Get-EntraIntuneHealth` |
 | | [Device inventory](Tools/DeviceInventory) | Model, serial, BIOS, OS build, every RAM stick, disks with health and wear, monitors with serials, battery wear, network, TPM and Secure Boot. Console, HTML or JSON. | `Get-DeviceInventory` |
 | | [Disk usage report](Tools/DiskUsage) | TreeSize-style scan with no install or licence: biggest folders by their own content, biggest files, known cleanup targets flagged safe/caution, self-contained HTML report. Works over `Invoke-Command`. | `Get-DiskUsageReport` |
 | | [Disk usage browser](Tools/DiskUsage) | Live WPF folder-size browser. Read-only. | `Show-DiskUsageGui` |
@@ -85,6 +87,7 @@ Every tool is also a command with the script's own parameters, tab completion an
 ```powershell
 Import-Module EndpointToolkit
 
+Invoke-QuickTriage -Html
 Get-EntraIntuneHealth -Sync
 Get-DeviceInventory -Html
 Get-DiskUsageReport -Path D:\ -TopFolders 50 -PassThru
