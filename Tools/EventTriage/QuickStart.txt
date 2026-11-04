@@ -1,0 +1,17 @@
+EVENT TRIAGE - QUICK START
+
+Run:     powershell.exe -ExecutionPolicy Bypass -File "C:\Scripts\EventTriage.ps1"
+         (Run as Administrator to read the Security log)
+
+1. Computer: leave blank for this PC, or type a hostname (WinRM by default, RPC if that fails).
+2. Pick a Preset from the dropdown, OR tick logs + time range + levels yourself, then Run query.
+3. Left grid = one row per problem (Provider + Event ID), worst first. Type in the filter box to narrow it.
+4. Click a row -> its individual events appear on the right. Click an event -> full details below.
+5. Show context = everything from all logs in the minutes around that event. Amber row is your event.
+6. Right-click any row:
+      Copy AI prompt            -> paste into any AI for a diagnosis and fix
+      Copy AI prompt (redacted) -> same, with hostname/user/IPs/emails scrubbed
+      Mute this event ID        -> hide known noise (saved to EventTriage.mutes.json)
+7. Export CSV on any grid. Show XML for the raw record. Search the web for the ID.
+
+Cancel stops a slow query. Status bar at the top tells you what happened and why if it failed.

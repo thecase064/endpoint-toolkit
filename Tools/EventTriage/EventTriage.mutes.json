@@ -1,0 +1,27 @@
+﻿[
+    {
+        "provider":  "Microsoft-Windows-DistributedCOM",
+        "id":  10016,
+        "note":  "DCOM permission noise - harmless"
+    },
+    {
+        "provider":  "Microsoft-Windows-Perflib",
+        "id":  1008,
+        "note":  "Perf counter failed to load - cosmetic"
+    },
+    {
+        "provider":  "Microsoft-Windows-User Profiles Service",
+        "id":  1534,
+        "note":  "Profile notification failure - cosmetic"
+    },
+    {
+        "provider":  "Microsoft-Windows-Kernel-EventTracing",
+        "id":  2,
+        "note":  "ETW session stopped - cosmetic"
+    },
+    {
+        "provider":  "Microsoft-Windows-Kernel-EventTracing",
+        "id":  3,
+        "note":  "ETW session failed to start - cosmetic"
+    }
+]

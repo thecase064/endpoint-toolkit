@@ -1,0 +1,132 @@
+{
+  "name": "Endpoint Toolkit",
+  "categories": ["Build", "Repair", "Diagnose", "Report"],
+  "tools": [
+    {
+      "id": "new-device-setup",
+      "name": "New device setup (full build chain)",
+      "category": "Build",
+      "path": "Tools/NewDeviceSetup/Invoke-NewDeviceSetup.ps1",
+      "command": "Invoke-NewDeviceSetup",
+      "description": "McAfee removal, OEM debloat, M365 Apps reinstall, Chrome + Reader. Unattended.",
+      "admin": true,
+      "mode": "child",
+      "confirm": "Runs the full build chain (15-30+ min) and REBOOTS the machine at the end.",
+      "prompts": [
+        { "param": "SkipReboot", "type": "switch", "prompt": "Skip the automatic reboot at the end?", "default": false }
+      ]
+    },
+    {
+      "id": "mcafee-removal",
+      "name": "McAfee removal",
+      "category": "Build",
+      "path": "Tools/McAfeeRemoval/AVNuke.ps1",
+      "command": "Remove-McAfee",
+      "description": "Strips Store, MSI and EXE McAfee preloads. Exit 3010 = removed, reboot.",
+      "admin": true,
+      "mode": "child",
+      "successCodes": [0, 3010]
+    },
+    {
+      "id": "oem-debloat",
+      "name": "OEM debloat (HP / Dell)",
+      "category": "Build",
+      "path": "Tools/OEMDebloat/Invoke-BuildDebloat.ps1",
+      "command": "Invoke-BuildDebloat",
+      "description": "Removes OEM and consumer bloat, keeps SupportAssist / HP Support Assistant.",
+      "admin": true,
+      "mode": "child",
+      "prompts": [
+        { "param": "DryRun", "type": "switch", "prompt": "Dry run only (log what would go, change nothing)?", "default": true },
+        { "param": "Force",  "type": "switch", "prompt": "Force silent uninstall of EXE apps with no known silent switch?", "default": false }
+      ]
+    },
+    {
+      "id": "m365-reset",
+      "name": "M365 Apps reset + reinstall",
+      "category": "Build",
+      "path": "Tools/M365Reset/Reset-M365Apps.ps1",
+      "command": "Reset-M365Apps",
+      "description": "ODT removal of every Office install, then a clean M365 Apps install.",
+      "admin": true,
+      "mode": "child",
+      "confirm": "Removes ALL installed Office and reinstalls (3-4 GB download).",
+      "prompts": [
+        { "param": "ProductID", "type": "choice", "prompt": "Licence type", "options": ["O365BusinessRetail", "O365ProPlusRetail"], "default": "O365BusinessRetail" }
+      ]
+    },
+    {
+      "id": "chrome-reader",
+      "name": "Chrome + Adobe Reader install",
+      "category": "Build",
+      "path": "Tools/ChromeReader/Install-ChromeAndReader.ps1",
+      "command": "Install-ChromeAndReader",
+      "description": "Chrome Enterprise MSI + offline Reader, with Reader cloud/AI features locked down.",
+      "admin": true,
+      "mode": "child",
+      "prompts": [
+        { "param": "Apps", "type": "choice", "prompt": "Install which", "options": ["Both", "Chrome", "Reader"], "default": "Both" }
+      ]
+    },
+    {
+      "id": "windows-repair",
+      "name": "Windows repair checks (DISM + SFC)",
+      "category": "Repair",
+      "path": "Tools/WindowsRepair/WindowsRepairChecks.ps1",
+      "command": "Invoke-WindowsRepairChecks",
+      "description": "DISM RestoreHealth, SFC /scannow, DISM component cleanup.",
+      "admin": true,
+      "mode": "child",
+      "successCodes": [0, 3010]
+    },
+    {
+      "id": "disk-usage-report",
+      "name": "Disk usage report (HTML)",
+      "category": "Diagnose",
+      "path": "Tools/DiskUsage/Get-DiskUsageReport.ps1",
+      "command": "Get-DiskUsageReport",
+      "description": "TreeSize-style scan: biggest folders, files and safe cleanup targets.",
+      "admin": false,
+      "mode": "process",
+      "prompts": [
+        { "param": "Path", "type": "string", "prompt": "Path to scan (blank = system drive)" }
+      ]
+    },
+    {
+      "id": "disk-usage-gui",
+      "name": "Disk usage browser (GUI)",
+      "category": "Diagnose",
+      "path": "Tools/DiskUsage/Show-DiskUsageGui.ps1",
+      "command": "Show-DiskUsageGui",
+      "description": "Live folder-size browser. Look, don't touch: it can't delete anything.",
+      "admin": false,
+      "mode": "window"
+    },
+    {
+      "id": "event-triage",
+      "name": "Event triage (GUI)",
+      "category": "Diagnose",
+      "path": "Tools/EventTriage/EventTriage.ps1",
+      "command": "Start-EventTriage",
+      "description": "Groups event log noise into what's actually wrong. Local or remote.",
+      "admin": false,
+      "mode": "window"
+    },
+    {
+      "id": "m365-licence-report",
+      "name": "M365 licence report (Excel)",
+      "category": "Report",
+      "path": "Tools/M365LicenseReport/Get-M365LicenseReport.ps1",
+      "command": "Get-M365LicenseReport",
+      "description": "Graph-based user + licence workbook with reclaim and unlicensed sheets.",
+      "admin": false,
+      "mode": "child",
+      "prompts": [
+        { "param": "TenantId",              "type": "string", "prompt": "Tenant ID or domain (blank = pick at sign-in)" },
+        { "param": "ClientName",            "type": "string", "prompt": "Client name for the filename (blank = tenant name)" },
+        { "param": "IncludeLastSignIn",     "type": "switch", "prompt": "Include last sign-in (needs AuditLog.Read.All)?", "default": false },
+        { "param": "InstallMissingModules", "type": "switch", "prompt": "Install missing Graph / ImportExcel modules?", "default": false }
+      ]
+    }
+  ]
+}

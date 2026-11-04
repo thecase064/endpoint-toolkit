@@ -1,0 +1,12 @@
+# Build output
+dist/
+
+# Private leak-scan patterns (employer / client names) - checked locally, never pushed
+tests/leak-patterns.local.txt
+
+# Written by install.ps1 into each downloaded copy
+.etk-source.json
+
+# Local leftovers
+*.bak
+*.log
