@@ -76,7 +76,7 @@
       "category": "Build",
       "path": "Tools/M365Reset/Reset-M365Apps.ps1",
       "command": "Reset-M365Apps",
-      "description": "ODT removal of every Office install, then a clean M365 Apps install.",
+      "description": "ODT removal of every Office install, optional Microsoft Get Help deep scrub, then a clean M365 Apps install.",
       "admin": true,
       "mode": "child",
       "confirm": "Removes ALL installed Office and reinstalls (3-4 GB download).",
@@ -90,6 +90,12 @@
             "O365ProPlusRetail"
           ],
           "default": "O365BusinessRetail"
+        },
+        {
+          "param": "DeepClean",
+          "type": "switch",
+          "prompt": "Also run Microsoft's Get Help deep scrub (slower, for broken installs)?",
+          "default": false
         }
       ]
     },

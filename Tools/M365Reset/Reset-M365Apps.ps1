@@ -12,7 +12,7 @@
       - Removes Microsoft Store Office stubs (Office Hub / Desktop Apps)
       - Downloads the latest ODT setup.exe from the Office CDN
       - Runs an ODT "Remove All" config (also strips legacy MSI Office via RemoveMSI)
-      - Optional: SaRAcmd deep scrub for stubborn leftovers (-DeepClean)
+      - Optional: Microsoft Get Help deep scrub for stubborn leftovers (-DeepClean)
 
     Phase 2 - Install:
       - Reinstalls M365 Apps silently with your chosen Product ID / channel / language
@@ -25,8 +25,12 @@
     Current (default) or MonthlyEnterprise for managed environments.
 
 .PARAMETER DeepClean
-    Also runs Microsoft SaRAcmd OfficeScrubScenario after the ODT removal.
-    Slower, but catches broken/orphaned installs ODT can't see.
+    Also runs Microsoft's Get Help command line (GetHelpCmd.exe) Office scrub
+    (OfficeScrubScenario) after the ODT removal. Slower, but catches broken or
+    orphaned installs ODT can't see. Get Help replaced the SaRA command line,
+    which Microsoft removed from Windows in March 2026. It's downloaded fresh on
+    every run (each build expires after 90 days) and must be signed by Microsoft
+    or it won't run. Output is saved to C:\OfficeReset\GetHelp_<time>.log.
 
 .PARAMETER SkipInstall
     Removal only - don't reinstall.
@@ -78,12 +82,98 @@ function Write-Step($msg)  { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg)    { Write-Host "    [OK] $msg" -ForegroundColor Green }
 function Write-Warn2($msg) { Write-Host "    [!!] $msg" -ForegroundColor Yellow }
 
+# Includes every process Get Help checks for before its Office scrub (it stops
+# with result 06 if any of them are running).
+$OfficeProcesses = "winword","excel","powerpnt","outlook","onenote","onenoteim",
+                   "msaccess","mspub","visio","winproj","lync","teams","ms-teams","olk",
+                   "mstore","infopath","setlang","msouc","ois","groove","graph"
+
+function Invoke-OfficeProcessStop {
+    Get-Process -Name $OfficeProcesses -ErrorAction SilentlyContinue |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+}
+
+function Resolve-GetHelpResult {
+    # Office Uninstall result codes, from Microsoft Learn: "Use the command-line
+    # version of Get Help to uninstall Office".
+    param([int]$Code)
+    $ok = $true
+    $text = switch ($Code) {
+        0  { "Office scrub completed. Restart to finish the cleanup." }
+        66 { "Nothing left to scrub - the ODT removal already got it all." }
+        68 { "Nothing left to scrub - the ODT removal already got it all." }
+        6  { $ok = $false; "An Office app was still running, so Get Help stopped. Close everything and rerun with -DeepClean." }
+        8  { $ok = $false; "Multiple Office versions found. Use the full Get Help app (Get Help > Office uninstall)." }
+        9  { $ok = $false; "Get Help couldn't remove Office. Use the full Get Help app (Get Help > Office uninstall)." }
+        10 { $ok = $false; "Get Help says it isn't elevated. Rerun from an admin PowerShell." }
+        67 { $ok = $false; "Get Help rejected the -OfficeVersion value. Microsoft may have changed the switch." }
+        default { $ok = $false; "Unrecognised result. The Get Help build may have expired (they last 90 days) - check the output log." }
+    }
+    [pscustomobject]@{ Ok = $ok; Text = $text }
+}
+
+function Invoke-GetHelpScrub {
+    # Microsoft removed the SaRA command line from Windows in March 2026. Get Help's
+    # command line (GetHelpCmd.exe) replaces it and has the same OfficeScrubScenario.
+    # Each build stops working 90 days after it's made, so it's always downloaded
+    # fresh and never bundled.
+    param([Parameter(Mandatory)][string]$WorkDir)
+
+    $ghZip = Join-Path $WorkDir "GetHelpCmd.zip"
+    $ghDir = Join-Path $WorkDir "GetHelp"
+    $ghLog = Join-Path $WorkDir ("GetHelp_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))
+    # Also clear out anything older runs left behind, including the old SaRA download.
+    $scratch = $ghZip, $ghDir, (Join-Path $WorkDir "SaRACmd.zip"), (Join-Path $WorkDir "SaRA")
+
+    try {
+        Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
+        Invoke-WebRequest -Uri "https://aka.ms/SaRA_EnterpriseVersionFiles" `
+                          -OutFile $ghZip -UseBasicParsing
+        Expand-Archive -LiteralPath $ghZip -DestinationPath $ghDir -Force
+        $ghExe = Get-ChildItem -LiteralPath $ghDir -Filter "GetHelpCmd.exe" -Recurse -File |
+                 Select-Object -First 1
+        if (-not $ghExe) { throw "GetHelpCmd.exe not found in the download - Microsoft may have changed the package." }
+
+        $ghSig = Get-AuthenticodeSignature -FilePath $ghExe.FullName
+        if ($ghSig.Status -ne "Valid" -or $ghSig.SignerCertificate.Subject -notmatch "Microsoft") {
+            throw "GetHelpCmd.exe failed signature validation ($($ghSig.Status)) - not running it."
+        }
+        Write-Ok "GetHelpCmd.exe downloaded and signature verified"
+
+        # ODT can relaunch helpers; Get Help refuses to run with any Office app open.
+        Invoke-OfficeProcessStop
+
+        # Run from its own folder, as Microsoft's instructions do. Output is shown
+        # live and saved to the log.
+        Push-Location -LiteralPath $ghExe.DirectoryName
+        try {
+            $output = @(& $ghExe.FullName -S OfficeScrubScenario -AcceptEula -OfficeVersion All |
+                        Tee-Object -FilePath $ghLog |
+                        ForEach-Object { Write-Host "    $_"; $_ })
+            $exitCode = $LASTEXITCODE
+        }
+        finally { Pop-Location }
+
+        # Get Help prints its result as "NN: message". Trust that line, fall back to the exit code.
+        $resultLine = $output | Where-Object { "$_" -match '^\s*\d{2}:\s' } | Select-Object -Last 1
+        $code = if ("$resultLine" -match '^\s*(\d{2}):') { [int]$Matches[1] } else { $exitCode }
+
+        $result = Resolve-GetHelpResult -Code $code
+        if ($result.Ok) { Write-Ok "Get Help: $($result.Text)" }
+        else { Write-Warn2 "Get Help result $($code): $($result.Text)" }
+        Write-Host "    Get Help output: $ghLog"
+    }
+    catch {
+        Write-Warn2 "Get Help scrub skipped/failed: $($_.Exception.Message)"
+    }
+    finally {
+        Remove-Item -LiteralPath $ghZip, $ghDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # ---------------------------------------------- 1. kill office processes ----
 Write-Step "Closing any running Office processes"
-$officeProcs = "winword","excel","powerpnt","outlook","onenote","onenoteim",
-               "msaccess","mspub","visio","winproj","lync","teams","ms-teams","olk"
-Get-Process -Name $officeProcs -ErrorAction SilentlyContinue |
-    Stop-Process -Force -ErrorAction SilentlyContinue
+Invoke-OfficeProcessStop
 Write-Ok "Done"
 
 # ------------------------------------- 2. remove Microsoft Store stubs ------
@@ -136,28 +226,10 @@ $p = Start-Process -FilePath $SetupExe -ArgumentList "/configure `"$removeXmlPat
 if ($p.ExitCode -eq 0) { Write-Ok "ODT removal completed (exit code 0)" }
 else { Write-Warn2 "ODT removal exit code: $($p.ExitCode) - continuing" }
 
-# --------------------------------------- 5. optional SaRA deep scrub --------
+# ----------------------------------- 5. optional Get Help deep scrub --------
 if ($DeepClean) {
-    Write-Step "DeepClean: running Microsoft SaRA Office scrub"
-    $saraZip = Join-Path $WorkDir "SaRACmd.zip"
-    $saraDir = Join-Path $WorkDir "SaRA"
-    try {
-        Invoke-WebRequest -Uri "https://aka.ms/SaRA_EnterpriseVersionFiles" `
-                          -OutFile $saraZip -UseBasicParsing
-        Expand-Archive -Path $saraZip -DestinationPath $saraDir -Force
-        $saraExe = Get-ChildItem -Path $saraDir -Filter "SaRAcmd.exe" -Recurse |
-                   Select-Object -First 1 -ExpandProperty FullName
-        if (-not $saraExe) { throw "SaRAcmd.exe not found in extracted package." }
-
-        $sp = Start-Process -FilePath $saraExe `
-              -ArgumentList "-S OfficeScrubScenario -AcceptEula -OfficeVersion All" `
-              -Wait -PassThru
-        if ($sp.ExitCode -eq 0) { Write-Ok "SaRA scrub completed (exit code 0)" }
-        else { Write-Warn2 "SaRA scrub exit code: $($sp.ExitCode) (see SaRA docs for meaning)" }
-    }
-    catch {
-        Write-Warn2 "SaRA scrub skipped/failed: $($_.Exception.Message)"
-    }
+    Write-Step "DeepClean: running Microsoft Get Help Office scrub (a few minutes)"
+    Invoke-GetHelpScrub -WorkDir $WorkDir
 }
 
 # ------------------------------------------------- 6. clean reinstall -------

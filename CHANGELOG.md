@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 - 2026-11-05
+
+- **M365 Apps reset `-DeepClean` works again.** Microsoft removed the SaRA command line from Windows in March 2026 and its download link now serves the Get Help command line instead, so the deep scrub was being skipped with a warning every time. It now runs `GetHelpCmd.exe -S OfficeScrubScenario`. The download is fresh on every run (each build expires after 90 days), it won't run unless it's signed by Microsoft, it runs from its own folder, and Office apps are closed again first. Every documented result code gets a plain-English message, the output is saved to `C:\OfficeReset\GetHelp_<time>.log`, and old SaRA leftovers are cleared out.
+- The menu now asks whether to run the deep scrub (default no).
+
 ## 1.2.0 - 2026-11-04
 
 - **Quick triage** (`Invoke-QuickTriage`): the first five minutes of any ticket in one go. Device details, uptime (and whether Fast Startup is hiding it), pending reboot, free space and disk health, battery wear, Entra/Intune health, blue screens, unexpected shutdowns and app crashes, last update, antivirus and Defender state, memory and CPU, gateway and DNS. Problems come first, worst first, each with a next step, plus a one-line summary to paste into the ticket. Console and one-page HTML. Builds on the inventory and Entra/Intune tools rather than duplicating them.
