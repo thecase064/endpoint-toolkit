@@ -228,12 +228,71 @@
       ]
     },
     {
+      "id": "teams-cache",
+      "name": "Teams cache clear (new + classic)",
+      "category": "Repair",
+      "path": "Tools/TeamsCache/Clear-TeamsCache.ps1",
+      "command": "Clear-TeamsCache",
+      "description": "Closes Teams, empties the cache folder Microsoft documents (settings kept), starts Teams again. Run as the user.",
+      "admin": false,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "NoRestart",
+          "type": "switch",
+          "prompt": "Leave Teams closed afterwards?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "print-spooler",
+      "name": "Print spooler clear",
+      "category": "Repair",
+      "path": "Tools/PrintSpooler/Clear-PrintSpooler.ps1",
+      "command": "Clear-PrintSpooler",
+      "description": "Stops the spooler, deletes stuck jobs (.SPL/.SHD only), starts it again with its dependants.",
+      "admin": true,
+      "mode": "child",
+      "confirm": "Deletes every queued print job on this PC - people will need to print again."
+    },
+    {
+      "id": "office-activation-reset",
+      "name": "Office activation reset",
+      "category": "Repair",
+      "path": "Tools/OfficeActivation/Reset-OfficeActivation.ps1",
+      "command": "Reset-OfficeActivation",
+      "description": "Microsoft Get Help ResetOfficeActivation: clears Office licences and cached sign-ins so the user can activate fresh.",
+      "admin": true,
+      "mode": "child",
+      "confirm": "Closes all Office apps and signs Office out. The user signs in again afterwards."
+    },
+    {
+      "id": "teams-addin",
+      "name": "Teams Meeting add-in fix (classic Outlook)",
+      "category": "Repair",
+      "path": "Tools/TeamsAddin/Repair-TeamsMeetingAddin.ps1",
+      "command": "Repair-TeamsMeetingAddin",
+      "description": "Checks the add-in is installed and registered; fixes LoadBehavior, Outlook's disabled list and do-not-disable list. Run as the user.",
+      "admin": false,
+      "mode": "child",
+      "confirm": "Closes classic Outlook if it needs to fix anything.",
+      "prompts": [
+        {
+          "param": "CheckOnly",
+          "type": "switch",
+          "prompt": "Check only (change nothing, leave Outlook open)?",
+          "default": false
+        }
+      ]
+    },
+    {
       "id": "quick-triage",
       "name": "Quick triage (first five minutes)",
       "category": "Diagnose",
       "path": "Tools/QuickTriage/Invoke-QuickTriage.ps1",
       "command": "Invoke-QuickTriage",
-      "description": "Device, uptime, reboot, disk, crashes, updates, AV, Entra/Intune and network on one page, problems first.",
+      "description": "Device, uptime, reboot, disk, crashes, updates, AV, Entra/Intune and network on one page, problems first. Optional Wi-Fi + battery reports.",
       "admin": false,
       "mode": "child",
       "prompts": [
@@ -242,6 +301,12 @@
           "type": "switch",
           "prompt": "Write the one-page HTML report too?",
           "default": true
+        },
+        {
+          "param": "Reports",
+          "type": "switch",
+          "prompt": "Also save Windows' Wi-Fi + battery reports (Wi-Fi needs admin)?",
+          "default": false
         }
       ]
     },
@@ -265,6 +330,24 @@
           "param": "CollectLogs",
           "type": "switch",
           "prompt": "Bundle logs into a zip for escalation (needs admin)?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "bitlocker-backup",
+      "name": "BitLocker key backup check",
+      "category": "Diagnose",
+      "path": "Tools/BitLockerBackup/Test-BitLockerKeyBackup.ps1",
+      "command": "Test-BitLockerKeyBackup",
+      "description": "Is every recovery key backed up to Entra? Event 845/846 per key; -Fix backs up the missing ones. Never shows the keys.",
+      "admin": true,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Fix",
+          "type": "switch",
+          "prompt": "Back up any keys that aren't proven backed up to Entra?",
           "default": false
         }
       ]

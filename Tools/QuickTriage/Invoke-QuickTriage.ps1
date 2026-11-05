@@ -27,13 +27,19 @@
     Also write a one-page HTML report (and open it, when run locally and interactively).
 
 .PARAMETER ReportFolder
-    Where -Html writes. Default C:\Triage (created if missing).
+    Where -Html and -Reports write. Default C:\Triage (created if missing).
 
 .PARAMETER Days
     Look-back for crashes and shutdowns. Default 7.
 
 .PARAMETER SkipNetwork
     Skip the gateway, DNS and Entra/Intune endpoint checks.
+
+.PARAMETER Reports
+    Also save Windows' own Wi-Fi report (netsh wlan show wlanreport: connections, drops and
+    errors over the last few days) and battery report (powercfg /batteryreport: capacity history
+    and charge cycles) to ReportFolder, linked from the HTML page. The battery report is skipped on
+    machines without a battery; the Wi-Fi report needs an admin session and a Wi-Fi adapter.
 
 .PARAMETER NoOpen
     Don't open the HTML report after writing it.
@@ -51,6 +57,10 @@
     .\Invoke-QuickTriage.ps1 -Html
 
 .EXAMPLE
+    .\Invoke-QuickTriage.ps1 -Html -Reports
+    (From an elevated session to get the Wi-Fi report as well as the battery report.)
+
+.EXAMPLE
     Invoke-Command -ComputerName PC-1234 -FilePath .\Invoke-QuickTriage.ps1
     (Remote runs need the whole toolkit on the target, as this calls its sibling tools.)
 
@@ -64,6 +74,7 @@ param(
     [string] $ReportFolder = (Join-Path $env:SystemDrive 'Triage'),
     [ValidateRange(1, 30)] [int] $Days = 7,
     [switch] $SkipNetwork,
+    [switch] $Reports,
     [switch] $NoOpen,
     [switch] $Quiet,
     [switch] $PassThru
@@ -326,6 +337,48 @@ if (-not $SkipNetwork) {
     }
 }
 
+# ------------------------------------------------------------------------------------------------
+#  Optional: Windows' own Wi-Fi and battery reports (-Reports)
+# ------------------------------------------------------------------------------------------------
+$ExtraReports = New-Object System.Collections.Generic.List[object]
+function Add-ExtraReport { param([string] $Name, [string] $Path, [string] $Note)
+    $ExtraReports.Add([pscustomobject]@{ Name = $Name; Path = $Path; Note = $Note }) }
+
+if ($Reports) {
+    if (-not $Quiet) { Write-Host 'Saving the Wi-Fi and battery reports...' -ForegroundColor DarkGray }
+    if (-not (Test-Path -LiteralPath $ReportFolder)) { New-Item -ItemType Directory -Path $ReportFolder -Force | Out-Null }
+    $tag = '{0}_{1:yyyyMMdd-HHmm}.html' -f $env:COMPUTERNAME, $now
+
+    try {
+        if (@(Get-CimInstance -ClassName Win32_Battery -ErrorAction Stop).Count) {
+            $file = Join-Path $ReportFolder "Battery_$tag"
+            & powercfg.exe /batteryreport /output $file | Out-Null
+            if (Test-Path -LiteralPath $file) { Add-ExtraReport 'Battery report' $file 'Capacity history, charge cycles and battery life estimates' }
+            else { Add-ExtraReport 'Battery report' $null 'powercfg didn''t produce a report' }
+        }
+        else { Add-ExtraReport 'Battery report' $null 'No battery - skipped' }
+    }
+    catch { Add-ExtraReport 'Battery report' $null "Couldn't run: $($_.Exception.Message)" }
+
+    try {
+        $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator)
+        if (-not (Get-Service -Name WlanSvc -ErrorAction SilentlyContinue)) { Add-ExtraReport 'Wi-Fi report' $null 'No Wi-Fi on this machine - skipped' }
+        elseif (-not $isAdmin) { Add-ExtraReport 'Wi-Fi report' $null 'Needs an admin session - run Quick triage elevated with -Reports to get it' }
+        else {
+            & netsh.exe wlan show wlanreport | Out-Null
+            $src = Join-Path $env:ProgramData 'Microsoft\Windows\WlanReport\wlan-report-latest.html'
+            if (Test-Path -LiteralPath $src) {
+                $file = Join-Path $ReportFolder "WiFi_$tag"
+                Copy-Item -LiteralPath $src -Destination $file -Force
+                Add-ExtraReport 'Wi-Fi report' $file 'Connections, disconnects and errors over the last few days'
+            }
+            else { Add-ExtraReport 'Wi-Fi report' $null 'netsh didn''t produce a report' }
+        }
+    }
+    catch { Add-ExtraReport 'Wi-Fi report' $null "Couldn't run: $($_.Exception.Message)" }
+}
+
 # ================================================================================================
 #  Report
 # ================================================================================================
@@ -373,6 +426,15 @@ else {
     Write-Host ("  CHECKED AND FINE ({0})" -f $fine.Count) -ForegroundColor Green
     foreach ($f in $fine) { Write-Host ('   {0,-13} {1}: {2}' -f $f.Area, $f.Check, $f.Detail) -ForegroundColor DarkGray }
 
+    if ($ExtraReports.Count) {
+        Write-Host ''
+        Write-Host '  REPORTS' -ForegroundColor Cyan
+        foreach ($r in $ExtraReports) {
+            if ($r.Path) { Write-Host ('   {0,-15} {1}' -f $r.Name, $r.Path) }
+            else { Write-Host ('   {0,-15} {1}' -f $r.Name, $r.Note) -ForegroundColor DarkGray }
+        }
+    }
+
     Write-Host ''
     Write-Host "  Summary: $summary" -ForegroundColor Cyan
 }
@@ -390,6 +452,16 @@ if ($Html) {
     }
     $attHtml  = if ($attention.Count) { "<table>$((& $rows $attention -WithFix) -join '')</table>" } else { '<p class="ok">Nothing needs attention.</p>' }
     $fineHtml = "<table>$((& $rows $fine) -join '')</table>"
+    $repHtml  = if ($ExtraReports.Count) {
+        $items = foreach ($r in $ExtraReports) {
+            if ($r.Path) {
+                # Saved next to this page, so a relative link works wherever the folder is copied.
+                "<li><a href=""$(& $enc ([IO.Path]::GetFileName($r.Path)))"">$(& $enc $r.Name)</a> - $(& $enc $r.Note)</li>"
+            }
+            else { "<li>$(& $enc $r.Name): <span class=""fix"">$(& $enc $r.Note)</span></li>" }
+        }
+        "<h2>Reports</h2><ul>$($items -join '')</ul>"
+    } else { '' }
     $page = @"
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>Quick triage - $env:COMPUTERNAME</title>
 <style>
@@ -408,6 +480,7 @@ if ($Html) {
 <div class="summary">$(& $enc $summary)</div>
 <h2>Needs attention ($($attention.Count))</h2>$attHtml
 <h2>Checked and fine ($($fine.Count))</h2>$fineHtml
+$repHtml
 </body></html>
 "@
     $page | Set-Content -LiteralPath $file -Encoding UTF8
@@ -417,6 +490,7 @@ if ($Html) {
     }
 }
 
-if ($PassThru) { [pscustomobject]@{ Summary = $summary; Device = $inv; Findings = @($Findings) } }
+# .ToArray(), not @(): PowerShell 7.5 throws "Argument types do not match" on @(List) inside an object literal.
+if ($PassThru) { [pscustomobject]@{ Summary = $summary; Device = $inv; Findings = $Findings.ToArray(); Reports = $ExtraReports.ToArray() } }
 if ($fails) { exit 1 }
 exit 0

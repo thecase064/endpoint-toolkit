@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml)
 
-A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, repair a broken one, check its Entra and Intune health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a menu, as a module, or with a single line pasted into any machine. No USB stick, nothing to copy across.
+A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a menu, as a module, or with a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.2.1                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.3.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -23,18 +23,23 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, re
    REPAIR
      9  Windows repair checks (DISM + SFC)            admin
     10  Windows Update reset                          admin
+    11  Teams cache clear (new + classic)
+    12  Print spooler clear                           admin
+    13  Office activation reset                       admin
+    14  Teams Meeting add-in fix (classic Outlook)
 
    DIAGNOSE
-    11  Quick triage (first five minutes)
-    12  Entra / Intune health check
-    13  Device inventory (hardware + OS)
-    14  Disk usage report (HTML)
-    15  Disk usage browser (GUI)                      window
-    16  Event triage (GUI)                            window
+    15  Quick triage (first five minutes)
+    16  Entra / Intune health check
+    17  BitLocker key backup check                    admin
+    18  Device inventory (hardware + OS)
+    19  Disk usage report (HTML)
+    20  Disk usage browser (GUI)                      window
+    21  Event triage (GUI)                            window
 
    REPORT
-    17  M365 licence report (Excel)
-    18  Exchange + Planner usage report
+    22  M365 licence report (Excel)
+    23  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -51,7 +56,7 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.2.1` |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.3.0` |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` |
@@ -69,8 +74,13 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 | | [Driver export / import](Tools/DriverExport) | Backs up every third-party driver before a wipe, with a manifest, machine details and a restore note. Optionally zipped. `-ImportFrom` puts them back. | `Export-DeviceDriver` |
 | **Repair** | [Windows repair checks](Tools/WindowsRepair) | DISM RestoreHealth, SFC, DISM component cleanup, with progress and a clear finish. | `Invoke-WindowsRepairChecks` |
 | | [Windows Update reset](Tools/WindowsUpdateReset) | Stops the update services, sets aside SoftwareDistribution and catroot2 (renamed, not deleted), restarts and rescans. Flags the usual real causes first: pending reboot, dead WSUS, low disk. | `Reset-WindowsUpdate` |
-| **Diagnose** | [Quick triage](Tools/QuickTriage) | The first five minutes of any ticket on one page: device, uptime, pending reboot, disk space and health, crashes, updates, antivirus, Entra/Intune, memory and network. Problems first, each with a next step, plus a one-line summary for the ticket. | `Invoke-QuickTriage` |
+| | [Teams cache clear](Tools/TeamsCache) | Closes Teams, empties the cache folder Microsoft documents (new Teams, and classic if it's still there) and starts it again. Settings survive. Runs as the user and refuses to clear the wrong person's cache. | `Clear-TeamsCache` |
+| | [Print spooler clear](Tools/PrintSpooler) | Stops the spooler (ending it if it's wedged), deletes stuck jobs (`.SPL`/`.SHD` files only) and starts it again with its dependants. | `Clear-PrintSpooler` |
+| | [Office activation reset](Tools/OfficeActivation) | Microsoft's Get Help `ResetOfficeActivation`: clears Office licences and cached sign-ins so the user can activate fresh. Downloaded each run and checked for Microsoft's signature. | `Reset-OfficeActivation` |
+| | [Teams Meeting add-in fix](Tools/TeamsAddin) | The missing Teams Meeting button in classic Outlook: checks the add-in is installed and registered, fixes LoadBehavior and Outlook's disabled and do-not-disable lists, and gives Microsoft's reinstall steps for the rest. | `Repair-TeamsMeetingAddin` |
+| **Diagnose** | [Quick triage](Tools/QuickTriage) | The first five minutes of any ticket on one page: device, uptime, pending reboot, disk space and health, crashes, updates, antivirus, Entra/Intune, memory and network. Problems first, each with a next step, plus a one-line summary for the ticket. `-Reports` adds Windows' own Wi-Fi and battery reports. | `Invoke-QuickTriage` |
 | | [Entra / Intune health check](Tools/EntraIntuneHealth) | Join state, device auth, PRT, MDM enrolment, Intune certificate expiry, last check-in, push service, IME, event log errors and endpoint reachability, each with a fix hint. Can force a sync or zip the logs for escalation. Exit code 1 on failure, so it doubles as a remediation detection script. | `Get-EntraIntuneHealth` |
+| | [BitLocker key backup check](Tools/BitLockerBackup) | Is every recovery key backed up to Entra? Checks each key against the BitLocker event log (845/846, with the error explained); `-Fix` backs up the missing ones. Never shows the keys themselves. | `Test-BitLockerKeyBackup` |
 | | [Device inventory](Tools/DeviceInventory) | Model, serial, BIOS, OS build, every RAM stick, disks with health and wear, monitors with serials, battery wear, network, TPM and Secure Boot. Console, HTML or JSON. | `Get-DeviceInventory` |
 | | [Disk usage report](Tools/DiskUsage) | TreeSize-style scan with no install or licence: biggest folders by their own content, biggest files, known cleanup targets flagged safe/caution, self-contained HTML report. Works over `Invoke-Command`. | `Get-DiskUsageReport` |
 | | [Disk usage browser](Tools/DiskUsage) | Live WPF folder-size browser. Read-only. | `Show-DiskUsageGui` |
@@ -117,21 +127,22 @@ Each tool runs in one of three modes (set per tool in `tools.json`):
 
 ### Adding a tool
 
-1. Drop the script in `Tools\<Folder>\`.
+1. Drop the script in `Tools\<Folder>\`. Anything several tools share goes in `Tools\Shared\Helpers.ps1`.
 2. Add an entry to `tools.json`:
 
 ```json
 {
-  "id": "printer-reset",
-  "name": "Printer spooler reset",
-  "category": "Repair",
-  "path": "Tools/PrinterReset/Reset-PrintSpooler.ps1",
-  "command": "Reset-PrintSpooler",
-  "description": "Clears stuck jobs and restarts the spooler.",
+  "id": "wifi-profiles",
+  "name": "Wi-Fi profile export",
+  "category": "Build",
+  "path": "Tools/WifiProfiles/Export-WifiProfile.ps1",
+  "command": "Export-WifiProfile",
+  "description": "Exports the saved Wi-Fi networks before a rebuild.",
   "admin": true,
   "mode": "child",
+  "confirm": "Optional: shown before it runs, for anything destructive.",
   "prompts": [
-    { "param": "ClearQueue", "type": "switch", "prompt": "Delete queued jobs?", "default": true }
+    { "param": "IncludeKeys", "type": "switch", "prompt": "Include the Wi-Fi passwords?", "default": false }
   ]
 }
 ```

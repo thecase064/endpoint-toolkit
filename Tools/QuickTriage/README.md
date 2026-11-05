@@ -33,6 +33,7 @@ PC-1234 quick triage - 2 fail, 3 warn: Free space, Blue screens, Pending reboot,
 | `-Html` | One-page HTML report in `C:\Triage\`, opened when run locally |
 | `-Days` | Look-back for crashes and shutdowns, default 7 |
 | `-SkipNetwork` | Skip the gateway, DNS and endpoint checks |
+| `-Reports` | Also save Windows' own **Wi-Fi report** (connections, drops and errors over the last few days) and **battery report** (capacity history, charge cycles) to `C:\Triage\`, linked from the HTML page. Battery is skipped on desktops; the Wi-Fi report needs an elevated session and a Wi-Fi adapter, and says so if either is missing. |
 | `-Quiet` | Only the summary line, for RMM monitors |
 | `-PassThru` | Return the findings and device details as objects |
 

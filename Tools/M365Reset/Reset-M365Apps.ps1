@@ -82,6 +82,9 @@ function Write-Step($msg)  { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg)    { Write-Host "    [OK] $msg" -ForegroundColor Green }
 function Write-Warn2($msg) { Write-Host "    [!!] $msg" -ForegroundColor Yellow }
 
+# Get Help download, signature check and runner (shared with other tools).
+. (Join-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "Shared") "Helpers.ps1")
+
 # Includes every process Get Help checks for before its Office scrub (it stops
 # with result 06 if any of them are running).
 $OfficeProcesses = "winword","excel","powerpnt","outlook","onenote","onenoteim",
@@ -113,61 +116,34 @@ function Resolve-GetHelpResult {
 }
 
 function Invoke-GetHelpScrub {
-    # Microsoft removed the SaRA command line from Windows in March 2026. Get Help's
-    # command line (GetHelpCmd.exe) replaces it and has the same OfficeScrubScenario.
-    # Each build stops working 90 days after it's made, so it's always downloaded
-    # fresh and never bundled.
+    # Runs Get Help's Office scrub. The download, signature check and run live in
+    # Tools\Shared\Helpers.ps1, shared with the Office activation reset.
     param([Parameter(Mandatory)][string]$WorkDir)
 
-    $ghZip = Join-Path $WorkDir "GetHelpCmd.zip"
-    $ghDir = Join-Path $WorkDir "GetHelp"
     $ghLog = Join-Path $WorkDir ("GetHelp_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))
-    # Also clear out anything older runs left behind, including the old SaRA download.
-    $scratch = $ghZip, $ghDir, (Join-Path $WorkDir "SaRACmd.zip"), (Join-Path $WorkDir "SaRA")
+    # Clear out the old SaRA download older versions of this script left behind.
+    Remove-Item -LiteralPath (Join-Path $WorkDir "SaRACmd.zip"), (Join-Path $WorkDir "SaRA") `
+        -Recurse -Force -ErrorAction SilentlyContinue
 
     try {
-        Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
-        Invoke-WebRequest -Uri "https://aka.ms/SaRA_EnterpriseVersionFiles" `
-                          -OutFile $ghZip -UseBasicParsing
-        Expand-Archive -LiteralPath $ghZip -DestinationPath $ghDir -Force
-        $ghExe = Get-ChildItem -LiteralPath $ghDir -Filter "GetHelpCmd.exe" -Recurse -File |
-                 Select-Object -First 1
-        if (-not $ghExe) { throw "GetHelpCmd.exe not found in the download - Microsoft may have changed the package." }
-
-        $ghSig = Get-AuthenticodeSignature -FilePath $ghExe.FullName
-        if ($ghSig.Status -ne "Valid" -or $ghSig.SignerCertificate.Subject -notmatch "Microsoft") {
-            throw "GetHelpCmd.exe failed signature validation ($($ghSig.Status)) - not running it."
-        }
+        $ghExe = Get-GetHelpCmd -WorkDir $WorkDir
         Write-Ok "GetHelpCmd.exe downloaded and signature verified"
 
         # ODT can relaunch helpers; Get Help refuses to run with any Office app open.
         Invoke-OfficeProcessStop
 
-        # Run from its own folder, as Microsoft's instructions do. Output is shown
-        # live and saved to the log.
-        Push-Location -LiteralPath $ghExe.DirectoryName
-        try {
-            $output = @(& $ghExe.FullName -S OfficeScrubScenario -AcceptEula -OfficeVersion All |
-                        Tee-Object -FilePath $ghLog |
-                        ForEach-Object { Write-Host "    $_"; $_ })
-            $exitCode = $LASTEXITCODE
-        }
-        finally { Pop-Location }
-
-        # Get Help prints its result as "NN: message". Trust that line, fall back to the exit code.
-        $resultLine = $output | Where-Object { "$_" -match '^\s*\d{2}:\s' } | Select-Object -Last 1
-        $code = if ("$resultLine" -match '^\s*(\d{2}):') { [int]$Matches[1] } else { $exitCode }
-
-        $result = Resolve-GetHelpResult -Code $code
+        $run = Invoke-GetHelpScenario -Exe $ghExe -Scenario OfficeScrubScenario `
+                                      -Switches '-OfficeVersion', 'All' -LogFile $ghLog
+        $result = Resolve-GetHelpResult -Code $run.Code
         if ($result.Ok) { Write-Ok "Get Help: $($result.Text)" }
-        else { Write-Warn2 "Get Help result $($code): $($result.Text)" }
+        else { Write-Warn2 "Get Help result $($run.Code): $($result.Text)" }
         Write-Host "    Get Help output: $ghLog"
     }
     catch {
         Write-Warn2 "Get Help scrub skipped/failed: $($_.Exception.Message)"
     }
     finally {
-        Remove-Item -LiteralPath $ghZip, $ghDir -Recurse -Force -ErrorAction SilentlyContinue
+        Clear-GetHelpDownload -WorkDir $WorkDir
     }
 }
 
