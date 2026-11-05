@@ -31,9 +31,34 @@ jobs:
       - name: Analyze (errors fail the build)
         shell: pwsh
         run: |
-          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Scope CurrentUser -Force }
-          $r = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          # Pinned, so CI and local runs use the same rules.
+          # One file at a time: PSScriptAnalyzer has a known intermittent "Object reference not set"
+          # crash (PowerShell/PSScriptAnalyzer#1351) that otherwise kills the whole job without saying
+          # where. A crash is retried once, then reported as a warning naming the file. Findings of
+          # Error severity still fail the build.
+          $ver = '1.25.0'
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer | Where-Object { "$($_.Version)" -eq $ver })) {
+            Install-Module PSScriptAnalyzer -RequiredVersion $ver -Scope CurrentUser -Force
+          }
+          Import-Module PSScriptAnalyzer -RequiredVersion $ver -Force
+          $files = Get-ChildItem -Recurse -File |
+            Where-Object { $_.Extension -in '.ps1', '.psm1', '.psd1' -and $_.FullName -notmatch '[\\/]\.git[\\/]' }
+          $crashed = @()
+          $r = foreach ($f in $files) {
+            $rel = [IO.Path]::GetRelativePath($PWD.Path, $f.FullName) -replace '\\', '/'
+            $found = $null; $err = $null
+            foreach ($try in 1..2) {
+              try { $found = @(Invoke-ScriptAnalyzer -Path $f.FullName -Settings ./PSScriptAnalyzerSettings.psd1 -ErrorAction Stop); $err = $null; break }
+              catch { $err = $_.Exception.Message }
+            }
+            if ($err) {
+              $crashed += $rel
+              Write-Host "::warning file=$rel,title=PSScriptAnalyzer crashed::$err (analyzer bug, retried once; file not analysed)"
+            }
+            else { $found }
+          }
           $r | Sort-Object Severity, ScriptName, Line | Format-Table Severity, RuleName, ScriptName, Line -AutoSize
+          Write-Host ("PSScriptAnalyzer {0}: {1} files, {2} findings, {3} analyzer crash(es)" -f $ver, $files.Count, @($r).Count, $crashed.Count)
           if ($r | Where-Object Severity -eq 'Error') { exit 1 }
 
   secrets:
