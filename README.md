@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml)
 
-A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a menu, as a module, or with a single line pasted into any machine. No USB stick, nothing to copy across.
+A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a menu, as a module, or with a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.3.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.4.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -14,32 +14,33 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop, re
      1  New device setup (full build chain)           admin
      2  McAfee removal                                admin
      3  OEM debloat (HP / Dell)                       admin
-     4  M365 Apps reset + reinstall                   admin
-     5  Chrome + Adobe Reader install                 admin
-     6  Hostname desktop shortcut
-     7  Driver export (before a wipe)                 admin
-     8  Driver import (from an export)                admin
+     4  OEM drivers + BIOS (Dell / HP / Lenovo)       admin
+     5  M365 Apps reset + reinstall                   admin
+     6  Chrome + Adobe Reader install                 admin
+     7  Hostname desktop shortcut
+     8  Driver export (before a wipe)                 admin
+     9  Driver import (from an export)                admin
 
    REPAIR
-     9  Windows repair checks (DISM + SFC)            admin
-    10  Windows Update reset                          admin
-    11  Teams cache clear (new + classic)
-    12  Print spooler clear                           admin
-    13  Office activation reset                       admin
-    14  Teams Meeting add-in fix (classic Outlook)
+    10  Windows repair checks (DISM + SFC)            admin
+    11  Windows Update reset                          admin
+    12  Teams cache clear (new + classic)
+    13  Print spooler clear                           admin
+    14  Office activation reset                       admin
+    15  Teams Meeting add-in fix (classic Outlook)
 
    DIAGNOSE
-    15  Quick triage (first five minutes)
-    16  Entra / Intune health check
-    17  BitLocker key backup check                    admin
-    18  Device inventory (hardware + OS)
-    19  Disk usage report (HTML)
-    20  Disk usage browser (GUI)                      window
-    21  Event triage (GUI)                            window
+    16  Quick triage (first five minutes)
+    17  Entra / Intune health check
+    18  BitLocker key backup check                    admin
+    19  Device inventory (hardware + OS)
+    20  Disk usage report (HTML)
+    21  Disk usage browser (GUI)                      window
+    22  Event triage (GUI)                            window
 
    REPORT
-    22  M365 licence report (Excel)
-    23  Exchange + Planner usage report
+    23  M365 licence report (Excel)
+    24  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -56,7 +57,7 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.3.0` |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.4.0` |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` |
@@ -68,6 +69,7 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 | **Build** | [New device setup](Tools/NewDeviceSetup) | Chains McAfee removal, debloat, M365 reinstall, Chrome + Reader and a hostname shortcut in one unattended pass, then reboots. Cut a new-laptop build from over half a day to under two hours. | `Invoke-NewDeviceSetup` |
 | | [McAfee removal](Tools/McAfeeRemoval) | Removes the Store, MSI and EXE forms of Dell's McAfee preload. Intune / RMM-friendly exit codes. | `Remove-McAfee` |
 | | [OEM debloat](Tools/OEMDebloat) | Strips HP / Dell consumer bloat while keeping SupportAssist, HP Support Assistant and hotkey drivers. List-driven, with `-DryRun`. | `Invoke-BuildDebloat` |
+| | [OEM driver + BIOS updates](Tools/OEMUpdates) | Dell, HP or Lenovo: scans with the vendor's own updater (Dell Command Update, HP Image Assistant, LSUClient), lists what's available, asks, installs. BIOS only when asked, with BitLocker suspended for the restart. Asks before installing a missing updater; never restarts by itself. | `Invoke-OEMUpdate` |
 | | [M365 Apps reset](Tools/M365Reset) | ODT removal of every Office install (OEM stubs, language packs, MSI), then a clean M365 Apps install. `-DeepClean` adds Microsoft's Get Help Office scrub for broken installs. | `Reset-M365Apps` |
 | | [Chrome + Reader](Tools/ChromeReader) | Chrome Enterprise MSI and the offline Reader installer, with Reader's cloud, AI and upsell features locked down by policy. | `Install-ChromeAndReader` |
 | | [Hostname shortcut](Tools/HostnameShortcut) | Desktop shortcut that shows the computer name, for the "what's my PC called?" call. | `New-HostnameShortcut` |

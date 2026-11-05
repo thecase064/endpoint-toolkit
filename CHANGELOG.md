@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 - 2026-11-05
+
+- **OEM driver + BIOS updates** (`Invoke-OEMUpdate`, Build): works out whether the machine is a Dell, HP or Lenovo, then uses that vendor's own updater:
+  - Dell: Dell Command | Update CLI
+  - HP: HP Image Assistant (business PCs)
+  - Lenovo: the LSUClient module
+- It scans and lists drivers and firmware, asks before installing, and never restarts the machine itself. Exit codes: `3010` when a restart is needed, `2` when updates are waiting (`-ScanOnly`).
+- BIOS updates are only included when ticked (`-IncludeBios`). BitLocker is suspended for one restart, and it warns when running on battery.
+- If the vendor's updater is missing it asks before installing it: winget for Dell and HP, the PowerShell Gallery for Lenovo. `-InstallTool` allows that without asking, for unattended runs.
+- Each vendor's result codes are translated into plain English.
+
 ## 1.3.0 - 2026-11-05
 
 New tools, each with its own menu entry:

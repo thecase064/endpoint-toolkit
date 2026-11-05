@@ -71,6 +71,29 @@
       ]
     },
     {
+      "id": "oem-updates",
+      "name": "OEM drivers + BIOS (Dell / HP / Lenovo)",
+      "category": "Build",
+      "path": "Tools/OEMUpdates/Invoke-OEMUpdate.ps1",
+      "command": "Invoke-OEMUpdate",
+      "description": "Scans with the vendor's own updater (Dell Command Update, HP Image Assistant, Lenovo LSUClient), lists, asks, installs. Never restarts.",
+      "admin": true,
+      "mode": "child",
+      "successCodes": [
+        0,
+        2,
+        3010
+      ],
+      "prompts": [
+        {
+          "param": "IncludeBios",
+          "type": "switch",
+          "prompt": "Include BIOS updates (plug the charger in)?",
+          "default": false
+        }
+      ]
+    },
+    {
       "id": "m365-reset",
       "name": "M365 Apps reset + reinstall",
       "category": "Build",
