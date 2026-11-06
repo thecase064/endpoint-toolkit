@@ -184,7 +184,8 @@ foreach ($stream in @('0', '1')) {
 $env:ETK_STREAM = '1'
 $r   = Invoke-ToolkitTool -Id fixture-child -Parameters ([ordered]@{ Name = 'Asker'; Ask = $true }) 6>$null
 $got = Get-Content -LiteralPath $outFile -Raw | ConvertFrom-Json
-Assert ($r.ExitCode -eq 77 -and [string]::IsNullOrEmpty($got.Answer)) 'child mode, piped back: a question mid-run gets a blank answer instead of hanging'
+$answerChars = if ($got.Answer) { ([string]$got.Answer).ToCharArray() | ForEach-Object { 'U+{0:X4}' -f [int]$_ } } else { 'none' }
+Assert ($r.ExitCode -eq 77 -and [string]::IsNullOrEmpty($got.Answer)) "child mode, piped back: a question mid-run gets a blank answer instead of hanging (exit $($r.ExitCode), answer chars: $($answerChars -join ' '))"
 Remove-Item -LiteralPath $outFile -ErrorAction SilentlyContinue
 Remove-Item Env:\ETK_STREAM
 Assert ((& $mod { $env:ETK_STREAM = '1'; $a = Test-ToolkitStreamOutput; $env:ETK_STREAM = '0'; $b = Test-ToolkitStreamOutput; Remove-Item Env:\ETK_STREAM; $a -and -not $b })) 'ETK_STREAM=1 / 0 forces piped-back output on / off'

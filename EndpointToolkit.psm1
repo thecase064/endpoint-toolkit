@@ -111,7 +111,11 @@ function Invoke-ToolkitChildStreamed {
     if ($WorkingDirectory) { $psi.WorkingDirectory = $WorkingDirectory }
 
     $p = [System.Diagnostics.Process]::Start($psi)
-    $p.StandardInput.Close()
+    # Close the pipe underneath, not the writer: StandardInput.Close() flushes first, and on Windows
+    # PowerShell 5.1 (.NET Framework) that sends a UTF-8 byte order mark when the console is in UTF-8
+    # mode, so a question got an invisible character instead of a blank answer. PowerShell 7 strips
+    # it; this sends nothing on either. Don't Dispose() $p: that would flush the writer after all.
+    $p.StandardInput.BaseStream.Close()
     $errors = $p.StandardError.ReadToEndAsync()   # read alongside stdout so neither pipe fills up and blocks
     while ($null -ne ($line = $p.StandardOutput.ReadLine())) { Write-Host $line }
     $p.WaitForExit()

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.1 - 2026-11-06
+
+### Fixed
+- **Piped-back output (remote sessions, RMM shells) on Windows PowerShell 5.1:** a tool asking a question mid-run could get an invisible character instead of a blank answer. Closing the child's input on .NET Framework wrote a UTF-8 byte order mark first when the console was in UTF-8 mode; PowerShell 7 never did. The pipe is now closed without writing anything. Found by the Windows PowerShell 5.1 CI job, which had failed this one test since 1.6.0.
+
+### Tests
+- That test now prints the exit code and the answer's characters, so a failure says what actually arrived.
+
 ## 1.7.0 - 2026-11-06
 
 ### Added
