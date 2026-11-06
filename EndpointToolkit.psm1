@@ -131,6 +131,32 @@ function Read-ToolkitToolOption {
     $params
 }
 
+function Show-ToolkitBrief {
+    # What a tool is about to do, shown before the menu asks "Run it?". Text comes from tools.json.
+    param([Parameter(Mandatory)] $Tool, [bool] $IsAdmin)
+    $rule = '  ' + ('-' * 70)
+    Write-Host ''
+    Write-Host $rule -ForegroundColor DarkCyan
+    Write-Host "   $($Tool.name)" -ForegroundColor Cyan
+    Write-Host $rule -ForegroundColor DarkCyan
+
+    $lines = @($Tool.brief | Where-Object { $_ })
+    if (-not $lines) { $lines = @($Tool.description) }
+    foreach ($l in $lines) { Write-Host "   $l" }
+    Write-Host ''
+
+    if ($Tool.confirm) { Write-Host "   WARNING: $($Tool.confirm)" -ForegroundColor Yellow }
+    if ($Tool.admin) {
+        if ($IsAdmin) { Write-Host '   Runs as admin.' -ForegroundColor DarkGray }
+        else { Write-Host '   Needs admin - the toolkit will offer to relaunch elevated.' -ForegroundColor Yellow }
+    }
+    if ($Tool.mode -eq 'window') { Write-Host '   Opens in its own window.' -ForegroundColor DarkGray }
+    $q = @($Tool.prompts).Where({ $_ }).Count
+    if ($q -eq 1) { Write-Host '   Asks 1 question first (Enter takes the default).' -ForegroundColor DarkGray }
+    elseif ($q -gt 1) { Write-Host "   Asks $q questions first (Enter takes the default)." -ForegroundColor DarkGray }
+    Write-Host ''
+}
+
 function Start-ElevatedToolkit {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Only opens a UAC prompt; the user confirms there.')]
     param()
@@ -169,6 +195,7 @@ function Get-ToolkitTool {
                 Admin       = [bool]$_.admin
                 Mode        = $_.mode
                 Description = $_.description
+                Brief       = [string[]]@($_.brief | Where-Object { $_ })
                 Path        = Get-ToolkitToolPath $_
             }
         }
@@ -237,8 +264,9 @@ function Show-EndpointToolkit {
     .SYNOPSIS
         Opens the interactive toolkit menu.
     .DESCRIPTION
-        Pick a number to run a tool. Tools that need admin offer to relaunch the toolkit elevated.
-        Tools with options ask for them first (press Enter to take the default).
+        Pick a number to see what that tool does, then answer y to run it (anything else goes back).
+        Tools that need admin offer to relaunch the toolkit elevated.
+        Tools with options ask for them next (press Enter to take the default).
     .EXAMPLE
         Show-EndpointToolkit
     .EXAMPLE
@@ -300,12 +328,10 @@ function Show-EndpointToolkit {
         if ($choice -notmatch '^\d+$' -or [int]$choice -lt 1 -or [int]$choice -gt $ordered.Count) { continue }
 
         $tool = $ordered[[int]$choice - 1]
-        Write-Host ''
-        Write-Host "  $($tool.name)" -ForegroundColor Cyan
-        Write-Host "  $($tool.description)" -ForegroundColor DarkGray
-        Write-Host ''
+        Show-ToolkitBrief -Tool $tool -IsAdmin $isAdmin
 
         if ($tool.admin -and -not $isAdmin) {
+            # Nothing runs here; the elevated window shows the brief again and asks "Run it?" there.
             $answer = Read-ToolkitInput '  This one needs admin. Relaunch the toolkit elevated? [Y/n]'
             if ($answer -notmatch '^\s*n') {
                 Start-ElevatedToolkit
@@ -315,11 +341,8 @@ function Show-EndpointToolkit {
             continue
         }
 
-        if ($tool.confirm) {
-            Write-Host "  WARNING: $($tool.confirm)" -ForegroundColor Yellow
-            $answer = Read-ToolkitInput '  Carry on? [y/N]'
-            if ($answer -notmatch '^\s*y') { continue }
-        }
+        $answer = Read-ToolkitInput '  Run it? [y/N]'
+        if ($answer -notmatch '^\s*y') { continue }
 
         $options = Read-ToolkitToolOption -Tool $tool
         Write-Host ''

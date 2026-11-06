@@ -14,6 +14,11 @@
       "path": "Tools/NewDeviceSetup/Invoke-NewDeviceSetup.ps1",
       "command": "Invoke-NewDeviceSetup",
       "description": "McAfee removal, OEM debloat, M365 Apps reinstall, Chrome + Reader, hostname shortcut. Unattended.",
+      "brief": [
+        "Runs the whole new-laptop build in one unattended pass:",
+        "McAfee removal > OEM debloat > M365 reset + reinstall > Chrome + Reader > Hostname shortcut.",
+        "Takes 15-30+ minutes, mostly the Office download. Leave it running."
+      ],
       "admin": true,
       "mode": "child",
       "confirm": "Runs the full build chain (15-30+ min) and REBOOTS the machine at the end.",
@@ -39,6 +44,11 @@
       "path": "Tools/McAfeeRemoval/AVNuke.ps1",
       "command": "Remove-McAfee",
       "description": "Strips Store, MSI and EXE McAfee preloads. Exit 3010 = removed, reboot.",
+      "brief": [
+        "Removes the McAfee that Dell ships: the Store app, the MSI parts and WebAdvisor / LiveSafe.",
+        "Silent. Log in C:\\ProgramData\\McAfeeRemoval.",
+        "Changes the machine: uninstalls McAfee only."
+      ],
       "admin": true,
       "mode": "child",
       "successCodes": [
@@ -53,6 +63,11 @@
       "path": "Tools/OEMDebloat/Invoke-BuildDebloat.ps1",
       "command": "Invoke-BuildDebloat",
       "description": "Removes OEM and consumer bloat, keeps SupportAssist / HP Support Assistant.",
+      "brief": [
+        "Strips HP / Dell consumer bloat and Windows consumer apps from a fresh build.",
+        "Keeps the useful OEM tools (SupportAssist, HP Support Assistant, hotkey and system drivers).",
+        "Changes the machine. Pick dry run below to see what would go without removing anything."
+      ],
       "admin": true,
       "mode": "child",
       "prompts": [
@@ -77,6 +92,12 @@
       "path": "Tools/OEMUpdates/Invoke-OEMUpdate.ps1",
       "command": "Invoke-OEMUpdate",
       "description": "Scans with the vendor's own updater (Dell Command Update, HP Image Assistant, Lenovo LSUClient), lists, asks, installs. Never restarts.",
+      "brief": [
+        "Works out if it's a Dell, HP or Lenovo and uses that vendor's own updater.",
+        "Scans and lists driver and firmware updates, then asks again before installing anything.",
+        "Asks first if it needs to install the vendor's updater. Never restarts the machine.",
+        "BIOS only if you say yes below - plug the charger in for that."
+      ],
       "admin": true,
       "mode": "child",
       "successCodes": [
@@ -100,6 +121,12 @@
       "path": "Tools/M365Reset/Reset-M365Apps.ps1",
       "command": "Reset-M365Apps",
       "description": "ODT removal of every Office install, optional Microsoft Get Help deep scrub, then a clean M365 Apps install.",
+      "brief": [
+        "Removes every Office install (OEM stubs, language packs, old MSI Office), then reinstalls",
+        "a clean Microsoft 365 Apps from Microsoft (about 3-4 GB, 10-20 minutes).",
+        "Deep clean adds Microsoft's Get Help Office scrub for broken installs.",
+        "Restart afterwards, then sign in to Office to activate."
+      ],
       "admin": true,
       "mode": "child",
       "confirm": "Removes ALL installed Office and reinstalls (3-4 GB download).",
@@ -129,6 +156,11 @@
       "path": "Tools/ChromeReader/Install-ChromeAndReader.ps1",
       "command": "Install-ChromeAndReader",
       "description": "Chrome Enterprise MSI + offline Reader, with Reader cloud/AI features locked down.",
+      "brief": [
+        "Downloads and silently installs the latest Google Chrome (Enterprise MSI) and Adobe Reader",
+        "64-bit, with Adobe's cloud, AI Assistant and upsell bits switched off.",
+        "Installs software only; nothing is removed."
+      ],
       "admin": true,
       "mode": "child",
       "prompts": [
@@ -152,6 +184,11 @@
       "path": "Tools/HostnameShortcut/New-HostnameShortcut.ps1",
       "command": "New-HostnameShortcut",
       "description": "Desktop shortcut that shows the computer name. For \"what's my PC called?\" calls.",
+      "brief": [
+        "Puts a 'Hostname' shortcut on the desktop that shows the computer's name.",
+        "For the 'what's my computer called?' phone call.",
+        "Your desktop only, or the Public desktop for everyone (needs admin)."
+      ],
       "admin": false,
       "mode": "child",
       "prompts": [
@@ -170,6 +207,11 @@
       "path": "Tools/DriverExport/Export-DeviceDriver.ps1",
       "command": "Export-DeviceDriver",
       "description": "Backs up every third-party driver with a manifest and restore note.",
+      "brief": [
+        "Backs up every third-party driver on this machine before a wipe, with a list of what was",
+        "saved, the machine's details and the one command that puts them back.",
+        "Only copies drivers out - changes nothing on this machine. Optional zip for the USB stick."
+      ],
       "admin": true,
       "mode": "child",
       "prompts": [
@@ -192,6 +234,11 @@
       "category": "Build",
       "path": "Tools/DriverExport/Export-DeviceDriver.ps1",
       "description": "Installs every driver from a previous export folder or .zip with pnputil.",
+      "brief": [
+        "Installs every driver from an earlier driver export (folder or .zip) using pnputil.",
+        "Drivers already on the machine are skipped.",
+        "Changes the machine: installs drivers. A restart may be needed afterwards."
+      ],
       "admin": true,
       "mode": "child",
       "successCodes": [
@@ -214,6 +261,12 @@
       "path": "Tools/WindowsRepair/WindowsRepairChecks.ps1",
       "command": "Invoke-WindowsRepairChecks",
       "description": "DISM RestoreHealth, SFC /scannow, DISM component cleanup.",
+      "brief": [
+        "Repairs Windows system files: DISM RestoreHealth, then SFC, then DISM component cleanup.",
+        "Can take 20+ minutes. Stops at the first failure and shows which step.",
+        "The cleanup step makes installed updates permanent (they can't be uninstalled after).",
+        "Ends with CHECKS COMPLETE - PLEASE RESTART SYSTEM."
+      ],
       "admin": true,
       "mode": "child",
       "successCodes": [
@@ -228,6 +281,11 @@
       "path": "Tools/WindowsUpdateReset/Reset-WindowsUpdate.ps1",
       "command": "Reset-WindowsUpdate",
       "description": "Stops update services, sets aside SoftwareDistribution and catroot2, restarts, rescans.",
+      "brief": [
+        "Fixes stuck or failing Windows Updates: stops the update services, renames the download",
+        "cache and catalog (kept, not deleted), starts everything again and kicks off a fresh scan.",
+        "Checks for the usual culprits first (pending reboot, WSUS policy, low disk)."
+      ],
       "admin": true,
       "mode": "child",
       "confirm": "Renames SoftwareDistribution and catroot2. Update history in Settings starts empty (installed updates stay).",
@@ -257,6 +315,11 @@
       "path": "Tools/TeamsCache/Clear-TeamsCache.ps1",
       "command": "Clear-TeamsCache",
       "description": "Closes Teams, empties the cache folder Microsoft documents (settings kept), starts Teams again. Run as the user.",
+      "brief": [
+        "Clears the Teams cache for the signed-in user, then starts Teams again.",
+        "First fix for Teams being slow, blank, stuck signing in or showing old names and photos.",
+        "Settings survive. Run it as the user, not as admin."
+      ],
       "admin": false,
       "mode": "child",
       "prompts": [
@@ -275,6 +338,10 @@
       "path": "Tools/PrintSpooler/Clear-PrintSpooler.ps1",
       "command": "Clear-PrintSpooler",
       "description": "Stops the spooler, deletes stuck jobs (.SPL/.SHD only), starts it again with its dependants.",
+      "brief": [
+        "Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs, starts it again.",
+        "Shows how many jobs are queued first. Printers, drivers and settings aren't touched."
+      ],
       "admin": true,
       "mode": "child",
       "confirm": "Deletes every queued print job on this PC - people will need to print again."
@@ -286,6 +353,11 @@
       "path": "Tools/OfficeActivation/Reset-OfficeActivation.ps1",
       "command": "Reset-OfficeActivation",
       "description": "Microsoft Get Help ResetOfficeActivation: clears Office licences and cached sign-ins so the user can activate fresh.",
+      "brief": [
+        "Resets Office activation with Microsoft's Get Help: clears Office licences and signs Office",
+        "out of its cached accounts, so the user can sign in and activate fresh.",
+        "For 'Unlicensed Product', the wrong account, or activation trouble after a licence change."
+      ],
       "admin": true,
       "mode": "child",
       "confirm": "Closes all Office apps and signs Office out. The user signs in again afterwards."
@@ -297,6 +369,11 @@
       "path": "Tools/TeamsAddin/Repair-TeamsMeetingAddin.ps1",
       "command": "Repair-TeamsMeetingAddin",
       "description": "Checks the add-in is installed and registered; fixes LoadBehavior, Outlook's disabled list and do-not-disable list. Run as the user.",
+      "brief": [
+        "Fixes the missing Teams Meeting button in classic Outlook for the signed-in user.",
+        "Checks the add-in is installed and registered, and fixes the Outlook settings that hide it.",
+        "Run it as the user, not as admin. Check-only mode changes nothing."
+      ],
       "admin": false,
       "mode": "child",
       "confirm": "Closes classic Outlook if it needs to fix anything.",
@@ -316,6 +393,11 @@
       "path": "Tools/QuickTriage/Invoke-QuickTriage.ps1",
       "command": "Invoke-QuickTriage",
       "description": "Device, uptime, reboot, disk, crashes, updates, AV, Entra/Intune and network on one page, problems first. Optional Wi-Fi + battery reports.",
+      "brief": [
+        "The first five minutes of a ticket on one page: device, uptime, reboot, disk, crashes,",
+        "updates, antivirus, Entra / Intune and network - problems first, each with a next step.",
+        "Read-only. Ends with a one-line summary to paste into the ticket."
+      ],
       "admin": false,
       "mode": "child",
       "prompts": [
@@ -340,6 +422,11 @@
       "path": "Tools/EntraIntuneHealth/Get-EntraIntuneHealth.ps1",
       "command": "Get-EntraIntuneHealth",
       "description": "Join state, PRT, MDM enrolment, certs, last check-in, IME, event errors, endpoints.",
+      "brief": [
+        "Checks the Entra join, SSO token, Intune enrolment, check-ins, agent and certificates.",
+        "Says what's wrong in plain English, with a fix for each.",
+        "Read-only, unless you choose a sync or a log bundle below."
+      ],
       "admin": false,
       "mode": "child",
       "prompts": [
@@ -364,6 +451,11 @@
       "path": "Tools/BitLockerBackup/Test-BitLockerKeyBackup.ps1",
       "command": "Test-BitLockerKeyBackup",
       "description": "Is every recovery key backed up to Entra? Event 845/846 per key; -Fix backs up the missing ones. Never shows the keys.",
+      "brief": [
+        "Checks every BitLocker recovery key on this machine has actually reached Entra ID.",
+        "Read-only, unless you say yes below to backing up the missing ones.",
+        "The recovery keys themselves are never shown."
+      ],
       "admin": true,
       "mode": "child",
       "prompts": [
@@ -382,6 +474,11 @@
       "path": "Tools/DeviceInventory/Get-DeviceInventory.ps1",
       "command": "Get-DeviceInventory",
       "description": "Model, serial, RAM sticks, disks and wear, monitors, battery, network, TPM.",
+      "brief": [
+        "One-page hardware and OS summary: model, serial, CPU, RAM sticks, disks and their health,",
+        "monitors with serials, battery wear, network and security state.",
+        "Read-only."
+      ],
       "admin": false,
       "mode": "process",
       "prompts": [
@@ -400,6 +497,10 @@
       "path": "Tools/DiskUsage/Get-DiskUsageReport.ps1",
       "command": "Get-DiskUsageReport",
       "description": "TreeSize-style scan: biggest folders, files and safe cleanup targets.",
+      "brief": [
+        "Finds what's eating the disk: biggest folders, biggest files and known cleanup targets.",
+        "Writes an HTML report you can attach to the ticket. Read-only - deletes nothing."
+      ],
       "admin": false,
       "mode": "process",
       "prompts": [
@@ -417,6 +518,10 @@
       "path": "Tools/DiskUsage/Show-DiskUsageGui.ps1",
       "command": "Show-DiskUsageGui",
       "description": "Live folder-size browser. Look, don't touch: it can't delete anything.",
+      "brief": [
+        "Opens a TreeSize-style window to browse folder and file sizes.",
+        "Browse only - there's no delete anywhere."
+      ],
       "admin": false,
       "mode": "window"
     },
@@ -427,6 +532,11 @@
       "path": "Tools/EventTriage/EventTriage.ps1",
       "command": "Start-EventTriage",
       "description": "Groups event log noise into what's actually wrong. Local or remote.",
+      "brief": [
+        "Opens a window that groups the event logs into problems, worst first, with known noise",
+        "hidden. Works on this machine or a remote one.",
+        "Read-only. Run elevated to include the Security log."
+      ],
       "admin": false,
       "mode": "window"
     },
@@ -437,6 +547,11 @@
       "path": "Tools/M365LicenseReport/Get-M365LicenseReport.ps1",
       "command": "Get-M365LicenseReport",
       "description": "Graph-based user + licence workbook with reclaim and unlicensed sheets.",
+      "brief": [
+        "Signs in to a tenant (Microsoft Graph) and writes an Excel report of every user and their",
+        "licences, with optional last sign-in and stale-account flags.",
+        "Read-only - changes nothing in the tenant. Signs out when done."
+      ],
       "admin": false,
       "mode": "child",
       "prompts": [
@@ -471,6 +586,11 @@
       "path": "Tools/ExchangePlannerUsage/Get-ExchangePlannerUsage.ps1",
       "command": "Get-ExchangePlannerUsage",
       "description": "Who is licensed for Exchange / Planner but not using it. CSV + Excel.",
+      "brief": [
+        "Per-user Exchange and Planner usage for a tenant: who's licensed but not using them.",
+        "Signs in to the tenant, writes a CSV (and Excel if ImportExcel is installed).",
+        "Read-only - changes nothing in the tenant."
+      ],
       "admin": false,
       "mode": "child",
       "prompts": [

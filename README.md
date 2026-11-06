@@ -6,7 +6,7 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.4.1                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.5.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -45,6 +45,21 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and
      Q  Quit
 ```
 
+Pick a number and nothing runs yet. You get a short brief first: what the tool does, what it changes, any warning, and how many questions follow. Then `Run it? [y/N]`. Only `y` runs it; anything else (Enter included) goes back to the menu.
+
+```
+  ----------------------------------------------------------------------
+   Print spooler clear
+  ----------------------------------------------------------------------
+   Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs, starts it again.
+   Shows how many jobs are queued first. Printers, drivers and settings aren't touched.
+
+   WARNING: Deletes every queued print job on this PC - people will need to print again.
+   Runs as admin.
+
+  Run it? [y/N]
+```
+
 ## Quick start
 
 Open PowerShell **as Administrator** on the machine and paste:
@@ -57,7 +72,7 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.4.1` |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.5.0` |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` |
@@ -117,7 +132,7 @@ Get-Help Get-DiskUsageReport -Full
 install.ps1 ──> downloads repo zip @ ref ──> C:\ProgramData\EndpointToolkit\<ref>-<time>\
                                               │
                                               ├─ EndpointToolkit.psm1  reads tools.json, builds the menu and commands
-                                              ├─ tools.json            one entry per tool: path, admin, mode, prompts
+                                              ├─ tools.json            one entry per tool: path, brief, admin, mode, prompts
                                               └─ Tools\<Tool>\*.ps1    the scripts, unchanged by the toolkit
 ```
 
@@ -140,6 +155,10 @@ Each tool runs in one of three modes (set per tool in `tools.json`):
   "path": "Tools/WifiProfiles/Export-WifiProfile.ps1",
   "command": "Export-WifiProfile",
   "description": "Exports the saved Wi-Fi networks before a rebuild.",
+  "brief": [
+    "Saves every Wi-Fi network this machine knows to a folder, ready for the new build.",
+    "Read-only: nothing on this machine changes."
+  ],
   "admin": true,
   "mode": "child",
   "confirm": "Optional: shown before it runs, for anything destructive.",
@@ -149,7 +168,9 @@ Each tool runs in one of three modes (set per tool in `tools.json`):
 }
 ```
 
-3. Add the command to `FunctionsToExport` in `EndpointToolkit.psd1`, then run the tests. They'll fail if a prompt names a parameter the script doesn't have.
+3. Add the command to `FunctionsToExport` in `EndpointToolkit.psd1`, then run the tests. They'll fail if a prompt names a parameter the script doesn't have, or if the tool has no `brief`.
+
+`description` is the one-liner for `Get-ToolkitTool`. `brief` is what the menu shows before asking `Run it?`: 1 to 5 plain-English lines of up to 96 characters. Say what it does, what it changes (or that it's read-only) and anything the tech should know first. `confirm` is shown in the brief as a yellow warning.
 
 Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered options).
 
@@ -183,7 +204,7 @@ The exe is a small stub that runs the one-line launcher, so it never goes stale.
 powershell -ExecutionPolicy Bypass -File .\tests\Test-Repo.ps1
 ```
 
-The tests check that every script parses, that `tools.json` matches the scripts' real parameters and the module exports match the manifest, that values with spaces and switches reach a child process intact, and that the menu works end to end with scripted input. They finish with a leak scan. Add your own private patterns (employer or client names) to `tests\leak-patterns.local.txt`. That file is git-ignored, so it's checked but never committed. CI runs the same tests on Windows PowerShell 5.1 and PowerShell 7, plus PSScriptAnalyzer (pinned to 1.25.0 and run one file at a time; its known intermittent crash is retried once, then shown as a warning naming the file). Any Error-severity finding fails the build.
+The tests check that every script parses, that `tools.json` matches the scripts' real parameters and the module exports match the manifest, that every tool has a brief, that values with spaces and switches reach a child process intact, and that the menu works end to end with scripted input (including that saying no to `Run it?` runs nothing). They finish with a leak scan. Add your own private patterns (employer or client names) to `tests\leak-patterns.local.txt`. That file is git-ignored, so it's checked but never committed. CI runs the same tests on Windows PowerShell 5.1 and PowerShell 7, plus PSScriptAnalyzer (pinned to 1.25.0 and run one file at a time; its known intermittent crash is retried once, then shown as a warning naming the file). Any Error-severity finding fails the build.
 
 ## Licence
 

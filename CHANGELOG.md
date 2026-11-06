@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.0 - 2026-11-06
+
+### Changed
+- **Menu: brief first, then `Run it?`.** Picking a number no longer starts anything. The menu shows a short brief (what the tool does, what it changes or that it's read-only, any warning, whether it needs admin or opens a window, how many questions follow), then asks `Run it? [y/N]`. Only `y` runs it; anything else goes back to the menu. Admin tools still offer the elevated relaunch first and show the brief again in the new window.
+- The old warning-only `Carry on? [y/N]` question is gone. The warning is now part of the brief, so there's one question for every tool instead of two for some.
+- `Get-ToolkitTool` returns each tool's `Brief`.
+
+### Added
+- `brief` field in `tools.json`, written for all 24 tools and checked against what each script actually does.
+- Tests: every tool has a 1-5 line brief within 96 characters; menu names fit the menu column; the brief and warning are shown; saying no runs nothing and goes straight back to the menu; `Run it?` is asked before any of the tool's own options.
+
 ## 1.4.1 - 2026-11-06
 
 Docs and CI only. No tool behaviour changed.

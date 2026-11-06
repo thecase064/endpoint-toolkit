@@ -77,6 +77,10 @@ foreach ($tool in $tools) {
     Assert (Test-Path -LiteralPath $path) "[$($tool.id)] script exists: $($tool.path)"
     Assert (@('child', 'process', 'window') -contains $tool.mode) "[$($tool.id)] mode '$($tool.mode)' is valid"
     Assert (@($manifest.categories) -contains $tool.category) "[$($tool.id)] category '$($tool.category)' is listed"
+    $brief = @($tool.brief)
+    $badLines = @($brief | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) -or $_.Length -gt 96 })
+    Assert ($brief.Count -ge 1 -and $brief.Count -le 5 -and $badLines.Count -eq 0) "[$($tool.id)] has a 1-5 line brief, lines up to 96 chars ($($brief.Count) lines)"
+    Assert ($tool.name.Length -le 44) "[$($tool.id)] name fits the menu column ($($tool.name.Length) chars)"
     if (-not (Test-Path -LiteralPath $path)) { continue }
 
     $scriptParams = Get-ScriptParameterName $path
@@ -102,6 +106,7 @@ $mod = Import-Module -Name $psd1Path -Force -PassThru
 $exported = @($mod.ExportedFunctions.Keys)
 Assert (Test-SameSet $exported $expected) "module exports $($exported.Count) functions as expected"
 Assert ($mod.ExportedAliases.ContainsKey('etk')) "alias 'etk' exported"
+Assert (@((Get-ToolkitTool -Id quick-triage).Brief).Count -ge 1) 'Get-ToolkitTool returns the brief'
 
 $common = [System.Management.Automation.Cmdlet]::CommonParameters + [System.Management.Automation.Cmdlet]::OptionalCommonParameters
 foreach ($tool in ($tools | Where-Object { $_.command })) {
@@ -132,6 +137,7 @@ $env:ETK_TEST_OUT = $outFile
     $script:Tools += [pscustomobject]@{
         id = 'fixture-child'; name = 'Fixture (child)'; category = 'Report'; mode = 'child'; admin = $false
         path = 'tests/fixtures/Echo-Args.ps1'; description = 'test'; successCodes = @(0, 77)
+        brief = @('Fixture brief line one.', 'Fixture brief line two.'); confirm = 'Fixture warning text.'
         prompts = @(
             [pscustomobject]@{ param = 'Name'; type = 'choice'; prompt = 'Pick'; options = @('Alpha', 'Beta Gamma'); default = 'Alpha' }
             [pscustomobject]@{ param = 'Flag'; type = 'switch'; prompt = 'Flag?'; default = $false }
@@ -165,21 +171,38 @@ $fixtureNumber = (@(& $mod {
 }).IndexOf('fixture-child')) + 1
 Assert ($fixtureNumber -gt 0) "fixture appears in the menu as option $fixtureNumber"
 
-# Junk, then the fixture: choice 2, flag yes, required path left blank once then given, Enter back to menu, quit.
-$answers = @('nonsense', '999', "$fixtureNumber", '2', 'y', '', 'C:\Req Dir', '', 'q')
-& $mod {
-    param($a)
-    $script:TestAnswers = [Collections.Queue]::new()
-    foreach ($x in $a) { $script:TestAnswers.Enqueue($x) }
-    function script:Read-ToolkitInput { param([string] $Prompt) $script:TestAnswers.Dequeue() }
-} $answers
+# Scripted answers; every prompt the menu asks is logged so the order can be checked.
+function Use-MenuAnswer {
+    param([string[]] $Answers)
+    & $mod {
+        param($a)
+        $script:TestAnswers = [Collections.Queue]::new()
+        foreach ($x in $a) { $script:TestAnswers.Enqueue($x) }
+        $script:TestPrompts = [Collections.Generic.List[string]]::new()
+        function script:Read-ToolkitInput { param([string] $Prompt) $script:TestPrompts.Add($Prompt.Trim()); $script:TestAnswers.Dequeue() }
+    } $Answers
+}
 
+# Pick the fixture, read the brief, say no: back to the menu without running it or asking its options.
+Use-MenuAnswer @("$fixtureNumber", 'n', "$fixtureNumber", '', 'q')
 $menuOut = & { Show-EndpointToolkit } 6>&1 | Out-String
-$got = Get-Content -LiteralPath $outFile -Raw | ConvertFrom-Json
-Assert ($got.Name -eq 'Beta Gamma' -and $got.Flag) 'menu: picked tool ran with the chosen options'
-Assert ($got.Path -eq 'C:\Req Dir') "menu: required prompt re-asked until answered ('$($got.Path)')"
-Assert ((& $mod { $script:TestAnswers.Count }) -eq 0) 'menu: consumed every answer and quit cleanly'
+$prompts = @(& $mod { $script:TestPrompts })
+Assert (-not (Test-Path -LiteralPath $outFile)) 'menu: answering n (or Enter) to "Run it?" runs nothing'
+Assert (($prompts -join '|') -eq 'Pick a number|Run it? [y/N]|Pick a number|Run it? [y/N]|Pick a number') "menu: declining goes straight back to the menu ($($prompts -join ' > '))"
+Assert ($menuOut -match 'Fixture brief line one\.' -and $menuOut -match 'Fixture brief line two\.') 'menu: the brief is shown before asking'
+Assert ($menuOut -match 'WARNING: Fixture warning text\.') 'menu: the warning is part of the brief'
+Assert ($menuOut -match 'Asks 3 questions first') 'menu: the brief says how many questions follow'
 Assert ($menuOut -match 'ENDPOINT TOOLKIT v' + [regex]::Escape($psd1.ModuleVersion)) 'menu: banner shows the module version'
+
+# Junk, then the fixture: y to run, choice 2, flag yes, required path left blank once then given, Enter back to menu, quit.
+Use-MenuAnswer @('nonsense', '999', "$fixtureNumber", 'y', '2', 'y', '', 'C:\Req Dir', '', 'q')
+$menuOut = & { Show-EndpointToolkit } 6>&1 | Out-String
+$prompts = @(& $mod { $script:TestPrompts })
+$got = Get-Content -LiteralPath $outFile -Raw | ConvertFrom-Json
+Assert ($got.Name -eq 'Beta Gamma' -and $got.Flag) 'menu: y runs the picked tool with the chosen options'
+Assert ($got.Path -eq 'C:\Req Dir') "menu: required prompt re-asked until answered ('$($got.Path)')"
+Assert ($prompts.IndexOf('Run it? [y/N]') -ge 0 -and $prompts.IndexOf('Run it? [y/N]') -lt $prompts.IndexOf('Choice')) 'menu: "Run it?" is asked before any of the tool''s options'
+Assert ((& $mod { $script:TestAnswers.Count }) -eq 0) 'menu: consumed every answer and quit cleanly'
 Remove-Item -LiteralPath $outFile -ErrorAction SilentlyContinue
 Remove-Item Env:\ETK_TEST_OUT
 
