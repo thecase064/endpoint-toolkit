@@ -85,6 +85,8 @@ foreach ($tool in $tools) {
     $ro = $tool.readOnly
     $briefText = @($tool.brief) -join ' '
     Assert ($null -eq $ro -or $ro -eq $true -or [string]$ro -eq 'default') "[$($tool.id)] readOnly is true, ""default"" or absent"
+    Assert ($null -eq $tool.changes -or $tool.changes -eq 'tenant') "[$($tool.id)] changes is ""tenant"" or absent"
+    if ($tool.changes -eq 'tenant') { Assert ($null -eq $ro -and $briefText -match 'tenant') "[$($tool.id)] changes the tenant, says so, and isn't marked read-only" }
     if ($null -eq $ro) { Assert ($briefText -notmatch 'Read-only') "[$($tool.id)] not marked read-only, and the brief doesn't claim it is" }
     else {
         Assert ($briefText -match 'Read-only|Browse only|changes nothing') "[$($tool.id)] marked read-only, and the brief says so"
@@ -270,7 +272,9 @@ $plans = & $mod {
     $admin = [pscustomobject]@{ id = 'a'; name = 'A'; category = 'Build'; mode = 'child'; admin = $true }
     $user  = [pscustomobject]@{ id = 'u'; name = 'U'; category = 'Repair'; mode = 'child'; admin = $false; readOnly = 'default' }
     $win   = [pscustomobject]@{ id = 'w'; name = 'W'; category = 'Diagnose'; mode = 'window'; admin = $false; readOnly = $true }
+    $cloud = [pscustomobject]@{ id = 'c'; name = 'C'; category = 'Build'; mode = 'child'; admin = $false; changes = 'tenant' }
     [pscustomobject]@{
+        TenantTags     = @(Get-ToolkitToolTag -Tool $cloud -IsAdmin $false | ForEach-Object { $_.Text })
         UserTags       = @(Get-ToolkitToolTag -Tool $user -IsAdmin $false | ForEach-Object { $_.Text })
         AdminFromUser  = Get-ToolkitRunPlan -Tool $admin -IsAdmin $false
         AdminFromAdmin = Get-ToolkitRunPlan -Tool $admin -IsAdmin $true
@@ -288,6 +292,7 @@ Assert ($plans.Window.Kind -eq 'window' -and $plans.Window.Label -eq 'Open') 'wi
 Assert (($plans.AdminTags -join '|') -eq 'Changes the machine|Needs admin' -and ($plans.AdminTagsAdmin -join '|') -eq 'Changes the machine|Runs as admin') "tags: changes the machine, then admin ($($plans.AdminTags -join ', '))"
 Assert (($plans.WindowTags -join '|') -eq 'Read-only|Opens a window') "tags: read-only window tool ($($plans.WindowTags -join ', '))"
 Assert (($plans.UserTags -join '|') -eq 'Read-only by default') "tags: read-only unless an option is ticked ($($plans.UserTags -join ', '))"
+Assert (($plans.TenantTags -join '|') -eq 'Changes the tenant') "tags: tools that change Microsoft 365, not the PC ($($plans.TenantTags -join ', '))"
 Assert ($plans.AdminFromUser.Glyph -eq 'EA18' -and $plans.User.Glyph -eq 'E768' -and $plans.Window.Glyph -eq 'E8A7') 'Run button icons: shield for admin, play for run, new window for open'
 
 $looks = & $mod {

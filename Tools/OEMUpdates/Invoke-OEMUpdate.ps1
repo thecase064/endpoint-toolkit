@@ -36,6 +36,10 @@
 
 .PARAMETER LogFolder
     Where logs and vendor reports go. Default C:\ProgramData\OEMUpdates.
+.PARAMETER ResultFile
+    Also write the outcome as JSON here: make, model, what was found (or installed), the exit code and
+    the last problem reported. New device setup uses this for its build report.
+
 
 .EXAMPLE
     .\Invoke-OEMUpdate.ps1
@@ -57,13 +61,15 @@
 #>
 #Requires -Version 5.1
 #Requires -RunAsAdministrator
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ResultFile', Justification = 'Read by Exit-WithResult.')]
 [CmdletBinding()]
 param(
     [switch] $IncludeBios,
     [switch] $Install,
     [switch] $ScanOnly,
     [switch] $InstallTool,
-    [string] $LogFolder = (Join-Path $env:ProgramData 'OEMUpdates')
+    [string] $LogFolder = (Join-Path $env:ProgramData 'OEMUpdates'),
+    [string] $ResultFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -74,8 +80,34 @@ $Interactive = [Environment]::UserInteractive -and -not $PSSenderInfo
 
 function Write-Step($m)  { Write-Host "`n==> $m" -ForegroundColor Cyan }
 function Write-Ok($m)    { Write-Host "    [OK] $m" -ForegroundColor Green }
-function Write-Warn2($m) { Write-Host "    [!!] $m" -ForegroundColor Yellow }
-function Write-Bad($m)   { Write-Host "    [XX] $m" -ForegroundColor Red }
+function Write-Warn2($m) { $script:LastProblem = $m; Write-Host "    [!!] $m" -ForegroundColor Yellow }
+function Write-Bad($m)   { $script:LastProblem = $m; Write-Host "    [XX] $m" -ForegroundColor Red }
+
+$script:LastProblem = $null
+function Exit-WithResult {
+    # Every exit goes through here, so -ResultFile always gets written (best effort) before the script ends.
+    param([int] $Code, [string] $Message)
+    if ($ResultFile) {
+        try {
+            $list = @($script:updates | Where-Object { $_ })
+            if (-not $Message) { $Message = $script:LastProblem }
+            [pscustomobject]@{
+                Vendor      = $script:vendor
+                Maker       = $script:maker
+                Model       = $script:friendlyModel
+                IncludeBios = [bool]$IncludeBios
+                Installed   = [bool]$script:installed
+                ExitCode    = $Code
+                Message     = $Message
+                Updates     = @($list | ForEach-Object {
+                    [pscustomobject]@{ Name = $_.Name; Version = $_.Version; Type = $_.Type; Severity = $_.Severity; Id = $_.Id; IsBios = [bool]$_.IsBios }
+                })
+            } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $ResultFile -Encoding UTF8
+        }
+        catch { Write-Verbose "Couldn't write the result file: $($_.Exception.Message)" }
+    }
+    exit $Code
+}
 
 function Read-YesNo {
     # Never blocks an unattended run: no console, no question, the answer is no.
@@ -167,7 +199,7 @@ Write-Step "OEM updates on $env:COMPUTERNAME - $maker $friendlyModel"
 if (-not $vendor) {
     Write-Warn2 "This isn't a Dell, HP or Lenovo, so there's no vendor updater to drive."
     Write-Host  '    Use Windows Update instead: Settings > Windows Update > Advanced options > Optional updates.'
-    exit 1
+    Exit-WithResult 1
 }
 $what = if ($IncludeBios) { 'drivers, firmware and BIOS' } else { 'drivers and firmware (BIOS excluded - use -IncludeBios)' }
 Write-Host "    Looking for $what."
@@ -202,10 +234,10 @@ switch ($vendor) {
               Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1 }
     $dcu = & $find
     if (-not $dcu) {
-        if (-not (Confirm-ToolInstall 'Dell Command | Update' -NoAsk:$InstallTool)) { exit 1 }
-        try { Install-WithWinget -Id 'Dell.CommandUpdate.Universal' -Name 'Dell Command | Update' } catch { Write-Bad $_.Exception.Message; exit 1 }
+        if (-not (Confirm-ToolInstall 'Dell Command | Update' -NoAsk:$InstallTool)) { Exit-WithResult 1 }
+        try { Install-WithWinget -Id 'Dell.CommandUpdate.Universal' -Name 'Dell Command | Update' } catch { Write-Bad $_.Exception.Message; Exit-WithResult 1 }
         $dcu = & $find
-        if (-not $dcu) { Write-Bad 'Dell Command | Update installed, but dcu-cli.exe still isn''t where expected.'; exit 1 }
+        if (-not $dcu) { Write-Bad 'Dell Command | Update installed, but dcu-cli.exe still isn''t where expected.'; Exit-WithResult 1 }
         Write-Ok 'Dell Command | Update installed'
     }
 
@@ -234,7 +266,7 @@ switch ($vendor) {
     if ($code -eq 500) { $updates = @() }
     elseif ($code -ne 0) {
         $why = if ($dellCodes.ContainsKey([int]$code)) { $dellCodes[[int]$code] } else { "Unexpected exit code $code - see $log" }
-        Write-Bad "Scan failed ($code): $why"; exit 1
+        Write-Bad "Scan failed ($code): $why"; Exit-WithResult 1
     }
     else {
         $xml = Get-ChildItem -LiteralPath $reportDir -Filter '*.xml' -File -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -283,10 +315,10 @@ switch ($vendor) {
               Select-Object -First 1 -ExpandProperty FullName }
     $hpia = & $find
     if (-not $hpia) {
-        if (-not (Confirm-ToolInstall 'HP Image Assistant' -NoAsk:$InstallTool)) { exit 1 }
-        try { Install-WithWinget -Id 'HP.ImageAssistant' -Name 'HP Image Assistant' } catch { Write-Bad $_.Exception.Message; exit 1 }
+        if (-not (Confirm-ToolInstall 'HP Image Assistant' -NoAsk:$InstallTool)) { Exit-WithResult 1 }
+        try { Install-WithWinget -Id 'HP.ImageAssistant' -Name 'HP Image Assistant' } catch { Write-Bad $_.Exception.Message; Exit-WithResult 1 }
         $hpia = & $find
-        if (-not $hpia) { Write-Bad 'HP Image Assistant installed, but HPImageAssistant.exe isn''t under C:\SWSetup.'; exit 1 }
+        if (-not $hpia) { Write-Bad 'HP Image Assistant installed, but HPImageAssistant.exe isn''t under C:\SWSetup.'; Exit-WithResult 1 }
         Write-Ok 'HP Image Assistant installed'
     }
 
@@ -308,7 +340,7 @@ switch ($vendor) {
     if ($code -in 256, 257) { $updates = @() }
     elseif ($code -ne 0) {
         $why = if ($hpCodes.ContainsKey([int]$code)) { $hpCodes[[int]$code] } else { "Unexpected exit code $code - see $reportDir" }
-        Write-Bad "Scan failed ($code): $why"; exit 1
+        Write-Bad "Scan failed ($code): $why"; Exit-WithResult 1
     }
     else {
         $json = Get-ChildItem -LiteralPath $reportDir -Filter '*.json' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -348,7 +380,7 @@ switch ($vendor) {
 # ================================================================================================
 'Lenovo' {
     if (-not (Get-Module -ListAvailable -Name LSUClient)) {
-        if (-not (Confirm-ToolInstall 'the LSUClient PowerShell module' -NoAsk:$InstallTool)) { exit 1 }
+        if (-not (Confirm-ToolInstall 'the LSUClient PowerShell module' -NoAsk:$InstallTool)) { Exit-WithResult 1 }
         try {
             Write-Host '    Installing LSUClient from the PowerShell Gallery...'
             if (-not (Get-PackageProvider -ListAvailable -Name NuGet -ErrorAction SilentlyContinue)) {
@@ -357,13 +389,13 @@ switch ($vendor) {
             Install-Module -Name LSUClient -Repository PSGallery -Scope AllUsers -Force -AllowClobber
             Write-Ok 'LSUClient installed'
         }
-        catch { Write-Bad "Couldn't install LSUClient: $($_.Exception.Message)"; exit 1 }
+        catch { Write-Bad "Couldn't install LSUClient: $($_.Exception.Message)"; Exit-WithResult 1 }
     }
     Import-Module LSUClient -Force
 
     Write-Step 'Scanning Lenovo''s update catalogue'
     try { $found = @(Get-LSUpdate) }
-    catch { Write-Bad "Scan failed: $($_.Exception.Message)"; exit 1 }
+    catch { Write-Bad "Scan failed: $($_.Exception.Message)"; Exit-WithResult 1 }
 
     $isBiosPkg = { param($p) ([string]$p.Type -eq 'BIOS') -or ([string]$p.Category -match 'BIOS|UEFI') -or ([string]$p.Title -match 'BIOS|UEFI') }
     $wanted = @($found | Where-Object { $IncludeBios -or -not (& $isBiosPkg $_) })
@@ -405,7 +437,7 @@ switch ($vendor) {
 if (-not $updates.Count) {
     Write-Ok 'Up to date - nothing to install.'
     Write-Host "    Log: $log"
-    exit 0
+    Exit-WithResult 0
 }
 
 Write-Host ''
@@ -413,18 +445,19 @@ Write-Host ("    {0} update(s) available:" -f $updates.Count) -ForegroundColor C
 Show-UpdateList $updates
 if (-not $IncludeBios) { Write-Host '    (BIOS updates not included - run with -IncludeBios to check those too.)' -ForegroundColor DarkGray }
 
-if ($ScanOnly) { Write-Host "`n    Scan only - nothing installed. Log: $log"; exit 2 }
+if ($ScanOnly) { Write-Host "`n    Scan only - nothing installed. Log: $log"; Exit-WithResult 2 }
 if (-not $Install -and -not (Read-YesNo "Install these $($updates.Count) update(s) now?")) {
     Write-Host "    Not installed. Log: $log"
-    exit 2
+    Exit-WithResult 2
 }
 
 Write-Step 'Installing (drivers can blank the screen or drop the network for a moment)'
 $result = & $installer
+$installed = $result.Code -in @(0, 3010)
 switch ($result.Code) {
     0    { Write-Ok $result.Message }
     3010 { Write-Warn2 $result.Message; Write-Host '    Not restarting automatically - restart when it suits the user.' -ForegroundColor Yellow }
     default { Write-Bad $result.Message }
 }
 Write-Host "    Log: $log"
-exit $result.Code
+Exit-WithResult $result.Code $result.Message

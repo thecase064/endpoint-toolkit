@@ -5,7 +5,7 @@
 A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
-┌ Endpoint Toolkit v1.6.0 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+┌ Endpoint Toolkit v1.7.0 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
 │ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
 │ Build                       │                                                                                  │
 │   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
@@ -34,7 +34,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.6.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.7.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -45,7 +45,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
      4  OEM drivers + BIOS (Dell / HP / Lenovo)       admin
      5  M365 Apps reset + reinstall                   admin
      6  Chrome + Adobe Reader install                 admin
-     7  Hostname desktop shortcut
+     7  Intune primary user (change or remove)
      8  Driver export (before a wipe)                 admin
      9  Driver import (from an export)                admin
 
@@ -108,7 +108,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.6.0` (add `-Console` for the console menu) |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.7.0` (add `-Console` for the console menu) |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |
@@ -117,13 +117,13 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | | Tool | What it does | Command |
 |---|---|---|---|
-| **Build** | [New device setup](Tools/NewDeviceSetup) | Chains McAfee removal, debloat, M365 reinstall, Chrome + Reader and a hostname shortcut in one unattended pass, then reboots. Cut a new-laptop build from over half a day to under two hours. | `Invoke-NewDeviceSetup` |
+| **Build** | [New device setup](Tools/NewDeviceSetup) | The whole build in one pass, then reboots: Intune primary user (optional), McAfee removal, debloat, M365 reinstall, Chrome + Reader and Dell/HP/Lenovo drivers. Ends with an **HTML build report** for the ticket: each step's result and output, outstanding Windows and driver updates (BIOS included), device details and app versions. Cut a new-laptop build from over half a day to under two hours. | `Invoke-NewDeviceSetup` |
 | | [McAfee removal](Tools/McAfeeRemoval) | Removes the Store, MSI and EXE forms of Dell's McAfee preload. Intune / RMM-friendly exit codes. | `Remove-McAfee` |
 | | [OEM debloat](Tools/OEMDebloat) | Strips HP / Dell consumer bloat while keeping SupportAssist, HP Support Assistant and hotkey drivers. List-driven, with `-DryRun`. | `Invoke-BuildDebloat` |
 | | [OEM driver + BIOS updates](Tools/OEMUpdates) | Dell, HP or Lenovo: scans with the vendor's own updater (Dell Command Update, HP Image Assistant, LSUClient), lists what's available, asks, installs. BIOS only when asked, with BitLocker suspended for the restart. Asks before installing a missing updater; never restarts by itself. | `Invoke-OEMUpdate` |
 | | [M365 Apps reset](Tools/M365Reset) | ODT removal of every Office install (OEM stubs, language packs, MSI), then a clean M365 Apps install. `-DeepClean` adds Microsoft's Get Help Office scrub for broken installs. | `Reset-M365Apps` |
 | | [Chrome + Reader](Tools/ChromeReader) | Chrome Enterprise MSI and the offline Reader installer, with Reader's cloud, AI and upsell features locked down by policy. | `Install-ChromeAndReader` |
-| | [Hostname shortcut](Tools/HostnameShortcut) | Desktop shortcut that shows the computer name, for the "what's my PC called?" call. | `New-HostnameShortcut` |
+| | [Intune primary user](Tools/IntunePrimaryUser) | Shows, changes or removes the PC's Intune primary user (Intune updates the Entra owner to match). Reads the tenant and Intune ID from the PC itself; you sign in as a tenant admin in Microsoft's window (MFA works). | `Set-IntunePrimaryUser` |
 | | [Driver export / import](Tools/DriverExport) | Backs up every third-party driver before a wipe, with a manifest, machine details and a restore note. Optionally zipped. `-ImportFrom` puts them back. | `Export-DeviceDriver` |
 | **Repair** | [Windows repair checks](Tools/WindowsRepair) | DISM RestoreHealth, SFC, DISM component cleanup, with progress and a clear finish. | `Invoke-WindowsRepairChecks` |
 | | [Windows Update reset](Tools/WindowsUpdateReset) | Stops the update services, sets aside SoftwareDistribution and catroot2 (renamed, not deleted), restarts and rescans. Flags the usual real causes first: pending reboot, dead WSUS, low disk. | `Reset-WindowsUpdate` |
@@ -229,7 +229,8 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
   |---|---|---|
   | M365 Apps reset | Office Deployment Tool, from Microsoft's Office CDN | Must be validly signed by Microsoft, or it aborts |
   | M365 Apps reset `-DeepClean`, Office activation reset | Microsoft Get Help command line (`aka.ms/SaRA_EnterpriseVersionFiles`) | Must be validly signed by Microsoft, or it won't run. Deleted afterwards |
-  | OEM drivers + BIOS | Dell Command Update / HP Image Assistant via **winget**, or the LSUClient module (MIT) from the **PowerShell Gallery** for Lenovo | **Asks first.** Only `-InstallTool` installs without asking. The vendor tools then fetch updates from Dell, HP or Lenovo |
+  | OEM drivers + BIOS | Dell Command Update / HP Image Assistant via **winget**, or the LSUClient module (MIT) from the **PowerShell Gallery** for Lenovo | **Asks first.** Only `-InstallTool` installs without asking; New device setup uses it, since a build runs unattended. The vendor tools then fetch updates from Dell, HP or Lenovo |
+  | Intune primary user (and New device setup when setting one) | Microsoft's `Microsoft.Graph.Authentication` module from the **PowerShell Gallery**, if it isn't installed | Every DLL must be validly signed, and the module's own by Microsoft, or it's deleted and not loaded. Cached in `ProgramData\EndpointToolkit\_modules`; New device setup deletes it at the end |
   | Chrome + Adobe Reader | Installers straight from Google's and Adobe's download servers (HTTPS) | Vendor URLs only. Not signature-checked by the toolkit |
   | M365 licence report | Microsoft Graph and ImportExcel modules from the PowerShell Gallery | Only with `-InstallMissingModules` |
 

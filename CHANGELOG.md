@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.7.0 - 2026-11-06
+
+### Added
+- **Build report for New device setup.** An HTML page (plus the same data as JSON) in `C:\ProgramData\DeploymentMaster\Reports`, opened at the end of the build. It has:
+  - **Each step:** what it does (the menu's brief), result, exit code, time taken and its full output (collapsed).
+  - **Still to do:**
+    - Windows Update: Windows' own scan, read-only, drivers included, with a 15-minute limit.
+    - Dell / HP / Lenovo: driver, firmware and BIOS updates still available (read-only scan).
+    - Whether a restart is pending.
+  - **Device details:** make, model, serial, BIOS, Windows build, Entra, Intune, BitLocker with recovery key, TPM, Secure Boot, disk, memory.
+  - **App versions:** Microsoft 365 Apps, Chrome and Reader, and confirmation that McAfee is gone.
+  - **Build details:** ticket number, technician, the account it ran as, start, finish and duration, toolkit version, and a notes box.
+  - **Print or save as PDF** expands all output first.
+- New device setup asks for a **ticket number** and **your name** for the report.
+- New device setup **installs Dell / HP / Lenovo drivers and firmware** (never BIOS) as a step, installing the vendor's updater if needed. Other makes are skipped, and the report says why. `-SkipDriverUpdates` turns it off.
+- **Intune primary user** tool (`Set-IntunePrimaryUser`, also an optional first step of New device setup):
+  - Shows, changes or removes the PC's Intune primary user; Intune updates the Entra device owner to match.
+  - Reads the tenant and Intune device ID from the PC itself, then signs in as a tenant admin in Microsoft's window (MFA works). Remote sessions use a device code.
+  - Downloads Microsoft's Graph sign-in module only if it's missing, and refuses it unless the signatures check out. The cache is deleted at the end of a build.
+  - New device setup runs it first, so you sign in while you're still at the PC.
+- `Invoke-OEMUpdate -ResultFile`: writes the make, model, updates found or installed, exit code and last problem as JSON.
+- Window: a **Changes the tenant** pill for tools that change Microsoft 365 rather than the PC (`"changes": "tenant"` in `tools.json`).
+
+### Changed
+- New device setup shows each step's output live as before, and also saves it. The output is plain text now (no colours from the step itself); the build script colours OK, warning and error lines.
+- New device setup exits `1` when any step needs a look (it used to always exit `0`), so the window and menu show CHECK LOG.
+- `install.ps1` leaves folders starting with `_` (the module cache) alone when tidying old copies.
+- The New device setup guide is now `Tools/NewDeviceSetup/README.md` (was `README.txt`).
+
+### Removed
+- **Hostname desktop shortcut** (`New-HostnameShortcut`, `Tools/HostnameShortcut`): gone from the toolkit, the menu and the window, along with its New device setup step and `-SkipHostnameShortcut`.
+
+### Tests
+- Build chain, with fake steps, 36 checks: step order and arguments, primary user given / not given / removed / failing, bad options refused before anything runs, a failing step not stopping the build, missing scripts, other makes, skipped drivers, drivers needing a restart, no reboot, Windows Update timing out, leftover McAfee, step output escaped in the HTML, briefs taken from `tools.json`.
+- Intune primary user, 27 checks: show, set, already set, remove, nothing to remove, unknown user, bad address, both options, not joined, not enrolled, not in Intune yet, no permission, sign-in cancelled, slow to update, disabled user, tenant override, device code with no desktop, module download, cache reuse, and signature refusals (unsigned DLL, tampered file, non-Microsoft signer).
+- OEM tool: 5 more checks for `-ResultFile` (now 43).
+
 ## 1.6.0 - 2026-11-06
 
 ### Added

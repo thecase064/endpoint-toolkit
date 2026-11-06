@@ -14,26 +14,48 @@
       "icon": "E7F8",
       "path": "Tools/NewDeviceSetup/Invoke-NewDeviceSetup.ps1",
       "command": "Invoke-NewDeviceSetup",
-      "description": "McAfee removal, OEM debloat, M365 Apps reinstall, Chrome + Reader, hostname shortcut. Unattended.",
+      "description": "Primary user, McAfee removal, debloat, M365 Apps, Chrome + Reader and vendor drivers, then an HTML build report.",
       "brief": [
-        "Runs the whole new-laptop build in one unattended pass:",
-        "McAfee removal > OEM debloat > M365 reset + reinstall > Chrome + Reader > Hostname shortcut.",
-        "Takes 15-30+ minutes, mostly the Office download. Leave it running."
+        "The whole new-laptop build in one pass: Intune primary user (if given) > McAfee removal >",
+        "OEM debloat > M365 Apps reinstall > Chrome + Reader > Dell / HP / Lenovo drivers.",
+        "Ends with an HTML build report: each step and its result, outstanding Windows and driver",
+        "updates, device details and app versions. Setting a user? Sign in at the start, then leave it."
       ],
       "admin": true,
       "mode": "child",
-      "confirm": "Runs the full build chain (15-30+ min) and REBOOTS the machine at the end.",
+      "confirm": "Runs the full build (20-40 min) and REBOOTS the machine at the end.",
       "prompts": [
+        {
+          "param": "Ticket",
+          "type": "string",
+          "prompt": "Ticket number for the build report (optional)"
+        },
+        {
+          "param": "Technician",
+          "type": "string",
+          "prompt": "Your name for the build report (blank = this Windows account)"
+        },
+        {
+          "param": "PrimaryUser",
+          "type": "string",
+          "prompt": "Intune primary user to set: their sign-in address (blank = leave as is)"
+        },
+        {
+          "param": "RemovePrimaryUser",
+          "type": "switch",
+          "prompt": "Or remove the Intune primary user (shared device)?",
+          "default": false
+        },
+        {
+          "param": "SkipDriverUpdates",
+          "type": "switch",
+          "prompt": "Skip the Dell / HP / Lenovo driver updates?",
+          "default": false
+        },
         {
           "param": "SkipReboot",
           "type": "switch",
           "prompt": "Skip the automatic reboot at the end?",
-          "default": false
-        },
-        {
-          "param": "SkipHostnameShortcut",
-          "type": "switch",
-          "prompt": "Skip the Hostname desktop shortcut?",
           "default": false
         }
       ]
@@ -184,25 +206,32 @@
       ]
     },
     {
-      "id": "hostname-shortcut",
-      "name": "Hostname desktop shortcut",
+      "id": "intune-primary-user",
+      "name": "Intune primary user (change or remove)",
       "category": "Build",
-      "icon": "E7F4",
-      "path": "Tools/HostnameShortcut/New-HostnameShortcut.ps1",
-      "command": "New-HostnameShortcut",
-      "description": "Desktop shortcut that shows the computer name. For \"what's my PC called?\" calls.",
+      "icon": "E77B",
+      "path": "Tools/IntunePrimaryUser/Set-IntunePrimaryUser.ps1",
+      "command": "Set-IntunePrimaryUser",
+      "description": "Shows, changes or removes this PC's Intune primary user (and Entra owner), signed in as a tenant admin.",
       "brief": [
-        "Puts a 'Hostname' shortcut on the desktop that shows the computer's name.",
-        "For the 'what's my computer called?' phone call.",
-        "Your desktop only, or the Public desktop for everyone (needs admin)."
+        "Signs in to this PC's Microsoft 365 tenant as an admin (Microsoft's sign-in window, MFA works).",
+        "Shows the PC's Intune primary user, then sets the user you give, or removes it (shared device).",
+        "Intune updates the Entra device owner to match. Changes the tenant, not this PC.",
+        "Needs Intune Administrator or Help Desk Operator. Leave the address blank to just look."
       ],
       "admin": false,
+      "changes": "tenant",
       "mode": "child",
       "prompts": [
         {
-          "param": "AllUsers",
+          "param": "UserPrincipalName",
+          "type": "string",
+          "prompt": "New primary user's sign-in address (blank = just show the current one)"
+        },
+        {
+          "param": "Remove",
           "type": "switch",
-          "prompt": "Put it on the Public desktop for all users (needs admin)?",
+          "prompt": "Remove the primary user instead (shared device)?",
           "default": false
         }
       ]

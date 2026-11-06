@@ -98,7 +98,9 @@ param(
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $moduleRoot '.etk-source.json') -Encoding UTF8
 
     # Keep the newest three copies. Best effort: folders another user created may not be removable.
+    # Folders starting with "_" (e.g. _modules, the Graph sign-in cache) aren't copies; leave them.
     Get-ChildItem -LiteralPath $baseDir -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike '_*' } |
         Sort-Object CreationTime -Descending | Select-Object -Skip 3 |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 

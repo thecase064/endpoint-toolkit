@@ -115,10 +115,12 @@ function Get-ToolkitThemeToggle {
 function Get-ToolkitToolTag {
     # The small labels beside a tool's name. Kind picks the colour: Neutral, Info, Warn, Ok or Danger.
     # readOnly in tools.json: true = changes nothing; "default" = changes nothing unless an option is ticked.
+    # changes: "tenant" = changes Microsoft 365 / Intune, not this PC.
     param([Parameter(Mandatory)] $Tool, [bool] $IsAdmin)
     $tags = @()
     if ([string]$Tool.readOnly -eq 'default') { $tags += [pscustomobject]@{ Text = 'Read-only by default'; Kind = 'Ok' } }
     elseif ($Tool.readOnly -eq $true)         { $tags += [pscustomobject]@{ Text = 'Read-only'; Kind = 'Ok' } }
+    elseif ($Tool.changes -eq 'tenant')       { $tags += [pscustomobject]@{ Text = 'Changes the tenant'; Kind = 'Danger' } }
     else                                      { $tags += [pscustomobject]@{ Text = 'Changes the machine'; Kind = 'Danger' } }
     if ($Tool.admin) {
         if ($IsAdmin) { $tags += [pscustomobject]@{ Text = 'Runs as admin'; Kind = 'Info' } }

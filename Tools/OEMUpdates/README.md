@@ -40,8 +40,9 @@ If the vendor's updater isn't installed, it **asks before installing it**. `-Ins
 | `-ScanOnly` | List only. Exit code `2` if updates are waiting, so it works as an RMM or Intune detection check |
 | `-InstallTool` | Install the vendor's updater if missing, without asking |
 | `-LogFolder` | Logs and vendor reports. Default `C:\ProgramData\OEMUpdates` |
+| `-ResultFile` | Also write the outcome as JSON: make, model, the updates found (or installed), exit code and the last problem. New device setup uses it for its build report |
 
-Unattended example (RMM): `Invoke-OEMUpdate -Install -InstallTool`. Add `-IncludeBios` only if you're happy for BIOS updates to be staged for the next restart.
+Unattended example (RMM): `Invoke-OEMUpdate -Install -InstallTool`. Add `-IncludeBios` only if you're happy for BIOS updates to be staged for the next restart. New device setup runs exactly this (no BIOS) as its driver step, then `-ScanOnly -IncludeBios` to list what's left in its build report.
 
 ## Exit codes
 
