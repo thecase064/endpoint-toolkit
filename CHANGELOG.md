@@ -1,9 +1,20 @@
 # Changelog
 
+## 1.7.2 - 2026-11-06
+
+### Fixed
+- **The 1.7.1 fix didn't work; this one does.** On Windows PowerShell 5.1, .NET Framework writes the byte order mark into the child's input as the process *starts*, not when the input is closed. CI showed it arriving as `∩╗┐` (U+2229 U+2557 U+2510: the three bytes read back on code page 437). The console's input encoding is now swapped for UTF-8 without a byte order mark just while the child starts, then put back. That only happens on Windows PowerShell 5.1 with a UTF-8 console, the one case that sent it.
+
+### Changed
+- CI: `actions/checkout` v4 → v6 and `gitleaks/gitleaks-action` v2 → v3, both on Node 24. This clears GitHub's "Node.js 20 is deprecated" warnings.
+
+### Tests
+- The blank-answer test also prints the PowerShell edition and the console's input code page.
+
 ## 1.7.1 - 2026-11-06
 
 ### Fixed
-- **Piped-back output (remote sessions, RMM shells) on Windows PowerShell 5.1:** a tool asking a question mid-run could get an invisible character instead of a blank answer. Closing the child's input on .NET Framework wrote a UTF-8 byte order mark first when the console was in UTF-8 mode; PowerShell 7 never did. The pipe is now closed without writing anything. Found by the Windows PowerShell 5.1 CI job, which had failed this one test since 1.6.0.
+- **Piped-back output (remote sessions, RMM shells) on Windows PowerShell 5.1** (first attempt; see 1.7.2): a tool asking a question mid-run could get an invisible character instead of a blank answer. Closing the child's input on .NET Framework wrote a UTF-8 byte order mark first when the console was in UTF-8 mode; PowerShell 7 never did. The pipe is now closed without writing anything. Found by the Windows PowerShell 5.1 CI job, which had failed this one test since 1.6.0.
 
 ### Tests
 - That test now prints the exit code and the answer's characters, so a failure says what actually arrived.

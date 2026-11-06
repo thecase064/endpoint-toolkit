@@ -110,11 +110,31 @@ function Invoke-ToolkitChildStreamed {
     $psi.RedirectStandardError  = $true
     if ($WorkingDirectory) { $psi.WorkingDirectory = $WorkingDirectory }
 
-    $p = [System.Diagnostics.Process]::Start($psi)
-    # Close the pipe underneath, not the writer: StandardInput.Close() flushes first, and on Windows
-    # PowerShell 5.1 (.NET Framework) that sends a UTF-8 byte order mark when the console is in UTF-8
-    # mode, so a question got an invisible character instead of a blank answer. PowerShell 7 strips
-    # it; this sends nothing on either. Don't Dispose() $p: that would flush the writer after all.
+    # Windows PowerShell 5.1 (.NET Framework) builds the child's input writer from the console's input
+    # encoding and flushes it as the process starts. With the console in UTF-8 mode that sends a UTF-8
+    # byte order mark, so a question mid-run got three junk characters instead of a blank answer.
+    # Swap in UTF-8 without one for the start only, then put the original back. PowerShell 7 never
+    # sends one, and a console that isn't in UTF-8 mode has none to send.
+    $restoreInput = $null
+    if ($PSVersionTable.PSEdition -ne 'Core') {
+        try {
+            $current = [Console]::InputEncoding
+            if ($current.CodePage -eq 65001 -and $current.GetPreamble().Length -gt 0) {
+                [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false
+                $restoreInput = $current
+            }
+        }
+        catch { Write-Verbose "Console input encoding left as it was: $($_.Exception.Message)" }
+    }
+    try { $p = [System.Diagnostics.Process]::Start($psi) }
+    finally {
+        if ($restoreInput) {
+            try { [Console]::InputEncoding = $restoreInput }
+            catch { Write-Verbose "Couldn't restore the console input encoding: $($_.Exception.Message)" }
+        }
+    }
+    # Close the pipe underneath rather than the writer, so nothing more is written on the way out.
+    # Don't Dispose() $p: that would flush the writer onto the closed pipe and throw.
     $p.StandardInput.BaseStream.Close()
     $errors = $p.StandardError.ReadToEndAsync()   # read alongside stdout so neither pipe fills up and blocks
     while ($null -ne ($line = $p.StandardOutput.ReadLine())) { Write-Host $line }

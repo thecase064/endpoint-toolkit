@@ -9,7 +9,7 @@ jobs:
     name: Tests (Windows PowerShell 5.1)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Parse, manifest, module, argument and menu tests
         shell: powershell
         run: ./tests/Test-Repo.ps1
@@ -18,7 +18,7 @@ jobs:
     name: Tests (PowerShell 7)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Parse, manifest, module, argument and menu tests
         shell: pwsh
         run: ./tests/Test-Repo.ps1
@@ -27,7 +27,7 @@ jobs:
     name: PSScriptAnalyzer
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Analyze (errors fail the build)
         shell: pwsh
         run: |
@@ -65,9 +65,9 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
