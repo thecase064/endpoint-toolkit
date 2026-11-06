@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.1 - 2026-11-06
+
+Docs and CI only. No tool behaviour changed.
+
+- **M365 Apps reset README** rewritten as `README.md`. It replaces the old USB-stick note and now covers the menu and command, every parameter, what to expect, logs, and the Get Help deep clean (`-DeepClean`).
+- **Security notes** in the main README now list what each tool downloads at run time, where from, and what's checked before it runs.
+- **Disk usage README** points at the toolkit menu and folder instead of an old standalone path.
+- **CI:** PSScriptAnalyzer is pinned to 1.25.0 and run one file at a time. Its known intermittent "Object reference not set" crash is retried once, then reported as a warning naming the file, instead of failing the whole job. Error-severity findings still fail the build.
+
 ## 1.4.0 - 2026-11-05
 
 - **OEM driver + BIOS updates** (`Invoke-OEMUpdate`, Build): works out whether the machine is a Dell, HP or Lenovo, then uses that vendor's own updater:

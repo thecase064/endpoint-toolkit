@@ -1,6 +1,11 @@
 DISK USAGE TOOLS - HOW TO USE
 ==============================
 
+Easiest: from the Endpoint Toolkit menu, pick "Disk usage report (HTML)" or
+"Disk usage browser (GUI)" under DIAGNOSE. Or, with the module loaded, run
+Get-DiskUsageReport / Show-DiskUsageGui. The steps below are for running the
+scripts by hand from this folder (Tools\DiskUsage in the toolkit).
+
 This folder contains two PowerShell scripts:
 
   Get-DiskUsageReport.ps1   - scans a drive/folder and writes a console
@@ -29,9 +34,10 @@ If it says "Restricted", allow local scripts for your user account only
 
 STEP 2 - RUN THE REPORT SCRIPT
 --------------------------------
-Open PowerShell, then:
+Open PowerShell, then go to this folder in the toolkit (adjust the path
+to wherever the toolkit lives):
 
-    cd C:\Fakesize
+    cd <toolkit>\Tools\DiskUsage
     .\Get-DiskUsageReport.ps1
 
 This scans your C: drive with default settings and prints a summary to
@@ -61,7 +67,7 @@ STEP 3 - RUN THE LIVE GUI
 ----------------------------
 Open PowerShell, then:
 
-    cd C:\Fakesize
+    cd <toolkit>\Tools\DiskUsage
     .\Show-DiskUsageGui.ps1
 
 A window opens and starts scanning C: right away, with a progress bar.

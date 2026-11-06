@@ -6,7 +6,7 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.4.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.4.1                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -57,7 +57,7 @@ That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.4.0` |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.4.1` |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` |
@@ -159,6 +159,15 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
 - Nothing in this repo is tenant- or client-specific: no IDs, credentials or names. Every run asks for what it needs. CI runs a secret scan (gitleaks) on every push.
 - Execution policy is only relaxed for the current process. If Group Policy enforces `AllSigned`, the launcher can't run until the scripts are signed.
 - The launchers use plain `-File` / `-Command`, never `-EncodedCommand`, so they don't look like malware to EDR.
+- **What gets downloaded at run time.** Nothing third-party is bundled in this repo. Some tools fetch software from the vendor when they run:
+
+  | Tool | Downloads | Check before it runs |
+  |---|---|---|
+  | M365 Apps reset | Office Deployment Tool, from Microsoft's Office CDN | Must be validly signed by Microsoft, or it aborts |
+  | M365 Apps reset `-DeepClean`, Office activation reset | Microsoft Get Help command line (`aka.ms/SaRA_EnterpriseVersionFiles`) | Must be validly signed by Microsoft, or it won't run. Deleted afterwards |
+  | OEM drivers + BIOS | Dell Command Update / HP Image Assistant via **winget**, or the LSUClient module (MIT) from the **PowerShell Gallery** for Lenovo | **Asks first.** Only `-InstallTool` installs without asking. The vendor tools then fetch updates from Dell, HP or Lenovo |
+  | Chrome + Adobe Reader | Installers straight from Google's and Adobe's download servers (HTTPS) | Vendor URLs only. Not signature-checked by the toolkit |
+  | M365 licence report | Microsoft Graph and ImportExcel modules from the PowerShell Gallery | Only with `-InstallMissingModules` |
 
 ## Building an .exe (optional)
 
@@ -174,7 +183,7 @@ The exe is a small stub that runs the one-line launcher, so it never goes stale.
 powershell -ExecutionPolicy Bypass -File .\tests\Test-Repo.ps1
 ```
 
-The tests check that every script parses, that `tools.json` matches the scripts' real parameters and the module exports match the manifest, that values with spaces and switches reach a child process intact, and that the menu works end to end with scripted input. They finish with a leak scan. Add your own private patterns (employer or client names) to `tests\leak-patterns.local.txt`. That file is git-ignored, so it's checked but never committed. CI runs the same tests on Windows PowerShell 5.1 and PowerShell 7, plus PSScriptAnalyzer.
+The tests check that every script parses, that `tools.json` matches the scripts' real parameters and the module exports match the manifest, that values with spaces and switches reach a child process intact, and that the menu works end to end with scripted input. They finish with a leak scan. Add your own private patterns (employer or client names) to `tests\leak-patterns.local.txt`. That file is git-ignored, so it's checked but never committed. CI runs the same tests on Windows PowerShell 5.1 and PowerShell 7, plus PSScriptAnalyzer (pinned to 1.25.0 and run one file at a time; its known intermittent crash is retried once, then shown as a warning naming the file). Any Error-severity finding fails the build.
 
 ## Licence
 
