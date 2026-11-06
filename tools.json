@@ -11,6 +11,7 @@
       "id": "new-device-setup",
       "name": "New device setup (full build chain)",
       "category": "Build",
+      "icon": "E7F8",
       "path": "Tools/NewDeviceSetup/Invoke-NewDeviceSetup.ps1",
       "command": "Invoke-NewDeviceSetup",
       "description": "McAfee removal, OEM debloat, M365 Apps reinstall, Chrome + Reader, hostname shortcut. Unattended.",
@@ -41,6 +42,7 @@
       "id": "mcafee-removal",
       "name": "McAfee removal",
       "category": "Build",
+      "icon": "E74D",
       "path": "Tools/McAfeeRemoval/AVNuke.ps1",
       "command": "Remove-McAfee",
       "description": "Strips Store, MSI and EXE McAfee preloads. Exit 3010 = removed, reboot.",
@@ -60,6 +62,7 @@
       "id": "oem-debloat",
       "name": "OEM debloat (HP / Dell)",
       "category": "Build",
+      "icon": "EA99",
       "path": "Tools/OEMDebloat/Invoke-BuildDebloat.ps1",
       "command": "Invoke-BuildDebloat",
       "description": "Removes OEM and consumer bloat, keeps SupportAssist / HP Support Assistant.",
@@ -89,6 +92,7 @@
       "id": "oem-updates",
       "name": "OEM drivers + BIOS (Dell / HP / Lenovo)",
       "category": "Build",
+      "icon": "E896",
       "path": "Tools/OEMUpdates/Invoke-OEMUpdate.ps1",
       "command": "Invoke-OEMUpdate",
       "description": "Scans with the vendor's own updater (Dell Command Update, HP Image Assistant, Lenovo LSUClient), lists, asks, installs. Never restarts.",
@@ -118,6 +122,7 @@
       "id": "m365-reset",
       "name": "M365 Apps reset + reinstall",
       "category": "Build",
+      "icon": "E72C",
       "path": "Tools/M365Reset/Reset-M365Apps.ps1",
       "command": "Reset-M365Apps",
       "description": "ODT removal of every Office install, optional Microsoft Get Help deep scrub, then a clean M365 Apps install.",
@@ -153,6 +158,7 @@
       "id": "chrome-reader",
       "name": "Chrome + Adobe Reader install",
       "category": "Build",
+      "icon": "E774",
       "path": "Tools/ChromeReader/Install-ChromeAndReader.ps1",
       "command": "Install-ChromeAndReader",
       "description": "Chrome Enterprise MSI + offline Reader, with Reader cloud/AI features locked down.",
@@ -181,6 +187,7 @@
       "id": "hostname-shortcut",
       "name": "Hostname desktop shortcut",
       "category": "Build",
+      "icon": "E7F4",
       "path": "Tools/HostnameShortcut/New-HostnameShortcut.ps1",
       "command": "New-HostnameShortcut",
       "description": "Desktop shortcut that shows the computer name. For \"what's my PC called?\" calls.",
@@ -204,6 +211,7 @@
       "id": "driver-export",
       "name": "Driver export (before a wipe)",
       "category": "Build",
+      "icon": "EDE1",
       "path": "Tools/DriverExport/Export-DeviceDriver.ps1",
       "command": "Export-DeviceDriver",
       "description": "Backs up every third-party driver with a manifest and restore note.",
@@ -213,6 +221,7 @@
         "Only copies drivers out - changes nothing on this machine. Optional zip for the USB stick."
       ],
       "admin": true,
+      "readOnly": true,
       "mode": "child",
       "prompts": [
         {
@@ -232,6 +241,7 @@
       "id": "driver-import",
       "name": "Driver import (from an export)",
       "category": "Build",
+      "icon": "E8B5",
       "path": "Tools/DriverExport/Export-DeviceDriver.ps1",
       "description": "Installs every driver from a previous export folder or .zip with pnputil.",
       "brief": [
@@ -258,6 +268,7 @@
       "id": "windows-repair",
       "name": "Windows repair checks (DISM + SFC)",
       "category": "Repair",
+      "icon": "E90F",
       "path": "Tools/WindowsRepair/WindowsRepairChecks.ps1",
       "command": "Invoke-WindowsRepairChecks",
       "description": "DISM RestoreHealth, SFC /scannow, DISM component cleanup.",
@@ -278,6 +289,7 @@
       "id": "windows-update-reset",
       "name": "Windows Update reset",
       "category": "Repair",
+      "icon": "E777",
       "path": "Tools/WindowsUpdateReset/Reset-WindowsUpdate.ps1",
       "command": "Reset-WindowsUpdate",
       "description": "Stops update services, sets aside SoftwareDistribution and catroot2, restarts, rescans.",
@@ -312,6 +324,7 @@
       "id": "teams-cache",
       "name": "Teams cache clear (new + classic)",
       "category": "Repair",
+      "icon": "E716",
       "path": "Tools/TeamsCache/Clear-TeamsCache.ps1",
       "command": "Clear-TeamsCache",
       "description": "Closes Teams, empties the cache folder Microsoft documents (settings kept), starts Teams again. Run as the user.",
@@ -335,6 +348,7 @@
       "id": "print-spooler",
       "name": "Print spooler clear",
       "category": "Repair",
+      "icon": "E749",
       "path": "Tools/PrintSpooler/Clear-PrintSpooler.ps1",
       "command": "Clear-PrintSpooler",
       "description": "Stops the spooler, deletes stuck jobs (.SPL/.SHD only), starts it again with its dependants.",
@@ -350,6 +364,7 @@
       "id": "office-activation-reset",
       "name": "Office activation reset",
       "category": "Repair",
+      "icon": "E8D7",
       "path": "Tools/OfficeActivation/Reset-OfficeActivation.ps1",
       "command": "Reset-OfficeActivation",
       "description": "Microsoft Get Help ResetOfficeActivation: clears Office licences and cached sign-ins so the user can activate fresh.",
@@ -366,6 +381,7 @@
       "id": "teams-addin",
       "name": "Teams Meeting add-in fix (classic Outlook)",
       "category": "Repair",
+      "icon": "E787",
       "path": "Tools/TeamsAddin/Repair-TeamsMeetingAddin.ps1",
       "command": "Repair-TeamsMeetingAddin",
       "description": "Checks the add-in is installed and registered; fixes LoadBehavior, Outlook's disabled list and do-not-disable list. Run as the user.",
@@ -390,6 +406,7 @@
       "id": "quick-triage",
       "name": "Quick triage (first five minutes)",
       "category": "Diagnose",
+      "icon": "E9D9",
       "path": "Tools/QuickTriage/Invoke-QuickTriage.ps1",
       "command": "Invoke-QuickTriage",
       "description": "Device, uptime, reboot, disk, crashes, updates, AV, Entra/Intune and network on one page, problems first. Optional Wi-Fi + battery reports.",
@@ -399,6 +416,7 @@
         "Read-only. Ends with a one-line summary to paste into the ticket."
       ],
       "admin": false,
+      "readOnly": true,
       "mode": "child",
       "prompts": [
         {
@@ -419,6 +437,7 @@
       "id": "entra-intune-health",
       "name": "Entra / Intune health check",
       "category": "Diagnose",
+      "icon": "E753",
       "path": "Tools/EntraIntuneHealth/Get-EntraIntuneHealth.ps1",
       "command": "Get-EntraIntuneHealth",
       "description": "Join state, PRT, MDM enrolment, certs, last check-in, IME, event errors, endpoints.",
@@ -428,6 +447,7 @@
         "Read-only, unless you choose a sync or a log bundle below."
       ],
       "admin": false,
+      "readOnly": "default",
       "mode": "child",
       "prompts": [
         {
@@ -448,6 +468,7 @@
       "id": "bitlocker-backup",
       "name": "BitLocker key backup check",
       "category": "Diagnose",
+      "icon": "E72E",
       "path": "Tools/BitLockerBackup/Test-BitLockerKeyBackup.ps1",
       "command": "Test-BitLockerKeyBackup",
       "description": "Is every recovery key backed up to Entra? Event 845/846 per key; -Fix backs up the missing ones. Never shows the keys.",
@@ -457,6 +478,7 @@
         "The recovery keys themselves are never shown."
       ],
       "admin": true,
+      "readOnly": "default",
       "mode": "child",
       "prompts": [
         {
@@ -471,6 +493,7 @@
       "id": "device-inventory",
       "name": "Device inventory (hardware + OS)",
       "category": "Diagnose",
+      "icon": "E770",
       "path": "Tools/DeviceInventory/Get-DeviceInventory.ps1",
       "command": "Get-DeviceInventory",
       "description": "Model, serial, RAM sticks, disks and wear, monitors, battery, network, TPM.",
@@ -480,6 +503,7 @@
         "Read-only."
       ],
       "admin": false,
+      "readOnly": true,
       "mode": "process",
       "prompts": [
         {
@@ -494,6 +518,7 @@
       "id": "disk-usage-report",
       "name": "Disk usage report (HTML)",
       "category": "Diagnose",
+      "icon": "EDA2",
       "path": "Tools/DiskUsage/Get-DiskUsageReport.ps1",
       "command": "Get-DiskUsageReport",
       "description": "TreeSize-style scan: biggest folders, files and safe cleanup targets.",
@@ -502,6 +527,7 @@
         "Writes an HTML report you can attach to the ticket. Read-only - deletes nothing."
       ],
       "admin": false,
+      "readOnly": true,
       "mode": "process",
       "prompts": [
         {
@@ -515,6 +541,7 @@
       "id": "disk-usage-gui",
       "name": "Disk usage browser (GUI)",
       "category": "Diagnose",
+      "icon": "EB05",
       "path": "Tools/DiskUsage/Show-DiskUsageGui.ps1",
       "command": "Show-DiskUsageGui",
       "description": "Live folder-size browser. Look, don't touch: it can't delete anything.",
@@ -523,12 +550,14 @@
         "Browse only - there's no delete anywhere."
       ],
       "admin": false,
+      "readOnly": true,
       "mode": "window"
     },
     {
       "id": "event-triage",
       "name": "Event triage (GUI)",
       "category": "Diagnose",
+      "icon": "E7BA",
       "path": "Tools/EventTriage/EventTriage.ps1",
       "command": "Start-EventTriage",
       "description": "Groups event log noise into what's actually wrong. Local or remote.",
@@ -538,21 +567,24 @@
         "Read-only. Run elevated to include the Security log."
       ],
       "admin": false,
+      "readOnly": true,
       "mode": "window"
     },
     {
       "id": "m365-licence-report",
       "name": "M365 licence report (Excel)",
       "category": "Report",
+      "icon": "E9F9",
       "path": "Tools/M365LicenseReport/Get-M365LicenseReport.ps1",
       "command": "Get-M365LicenseReport",
       "description": "Graph-based user + licence workbook with reclaim and unlicensed sheets.",
       "brief": [
         "Signs in to a tenant (Microsoft Graph) and writes an Excel report of every user and their",
         "licences, with optional last sign-in and stale-account flags.",
-        "Read-only - changes nothing in the tenant. Signs out when done."
+        "Read-only in the tenant. Signs out when done. Installs modules only if ticked below."
       ],
       "admin": false,
+      "readOnly": "default",
       "mode": "child",
       "prompts": [
         {
@@ -583,15 +615,18 @@
       "id": "exchange-planner-usage",
       "name": "Exchange + Planner usage report",
       "category": "Report",
+      "icon": "E9D2",
       "path": "Tools/ExchangePlannerUsage/Get-ExchangePlannerUsage.ps1",
       "command": "Get-ExchangePlannerUsage",
       "description": "Who is licensed for Exchange / Planner but not using it. CSV + Excel.",
       "brief": [
         "Per-user Exchange and Planner usage for a tenant: who's licensed but not using them.",
         "Signs in to the tenant, writes a CSV (and Excel if ImportExcel is installed).",
-        "Read-only - changes nothing in the tenant."
+        "Read-only, except: if the tenant hides names in usage reports, it asks to show them",
+        "for this run and hides them again afterwards."
       ],
       "admin": false,
+      "readOnly": "default",
       "mode": "child",
       "prompts": [
         {

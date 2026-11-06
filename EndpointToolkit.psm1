@@ -7,8 +7,13 @@
 
     Run modes (set per tool in tools.json):
       child   - runs in a separate powershell.exe in this console. Isolated state, real exit codes.
+                In a remote session or RMM shell its output is piped back here instead (see
+                Test-ToolkitStreamOutput).
       process - runs in this session, so -PassThru objects come back to your pipeline.
       window  - GUI tools. Launched in their own process; the menu carries on.
+
+    Two front ends share all of this: the console menu (Show-EndpointToolkit, alias etkc) and the
+    WPF window (Show-EndpointToolkitGui, alias etk, in Gui\ToolkitGui.ps1).
 
     Adding a tool: drop the script in Tools\<Folder>\, add an entry to tools.json. That's it.
 #>
@@ -74,6 +79,45 @@ function ConvertTo-ToolkitArgumentString {
 function Read-ToolkitInput {
     param([string] $Prompt)
     Read-Host -Prompt $Prompt
+}
+
+function Test-ToolkitStreamOutput {
+    # A child powershell.exe started with -NoNewWindow writes to this console. In a remote session
+    # (Enter-PSSession), the ISE or an RMM shell there's no console, so that output would vanish: pipe it
+    # back and print it here instead. ETK_STREAM=1 or 0 forces it on or off.
+    if ($env:ETK_STREAM -eq '1') { return $true }
+    if ($env:ETK_STREAM -eq '0') { return $false }
+    if ($Host.Name -in @('ServerRemoteHost', 'Windows PowerShell ISE Host')) { return $true }
+    try { return [Console]::IsOutputRedirected } catch { return $true }
+}
+
+function Invoke-ToolkitChildStreamed {
+    # Run a child process with its output piped back line by line. Its input is closed straight away:
+    # there's nobody to answer a question over a remote session, so prompts get a blank answer
+    # (the tools treat that as "no") instead of hanging. Returns the exit code.
+    param(
+        [Parameter(Mandatory)] [string] $FilePath,
+        [string] $Arguments,
+        [string] $WorkingDirectory
+    )
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName               = $FilePath
+    $psi.Arguments              = $Arguments
+    $psi.UseShellExecute        = $false
+    $psi.CreateNoWindow         = $true
+    $psi.RedirectStandardInput  = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    if ($WorkingDirectory) { $psi.WorkingDirectory = $WorkingDirectory }
+
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $p.StandardInput.Close()
+    $errors = $p.StandardError.ReadToEndAsync()   # read alongside stdout so neither pipe fills up and blocks
+    while ($null -ne ($line = $p.StandardOutput.ReadLine())) { Write-Host $line }
+    $p.WaitForExit()
+    $errText = $errors.Result
+    if ($errText -and $errText.Trim()) { Write-Host $errText.TrimEnd() -ForegroundColor Red }
+    $p.ExitCode
 }
 
 function Get-ToolkitSource {
@@ -157,13 +201,82 @@ function Show-ToolkitBrief {
     Write-Host ''
 }
 
+function Get-ToolkitRunResult {
+    # 'OK' when the exit code is one the tool lists as success (default: 0), otherwise 'CHECK LOG'.
+    param([Parameter(Mandatory)] $Tool, [int] $ExitCode)
+    $ok = @(0)
+    if ($Tool.successCodes) { $ok = @($Tool.successCodes) }
+    if ($ExitCode -in $ok) { 'OK' } else { 'CHECK LOG' }
+}
+
+function Get-ToolkitSha256 {
+    param([Parameter(Mandatory)] [byte[]] $Bytes)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try { -join ($sha.ComputeHash($Bytes) | ForEach-Object { $_.ToString('X2') }) } finally { $sha.Dispose() }
+}
+
+function Invoke-ToolkitToolFromFile {
+    # Used by Gui\Invoke-ToolWindow.ps1, which the window starts in its own console (elevated if needed).
+    # The options arrive in a small JSON file; its SHA-256 comes on the command line, so a file changed
+    # after the window wrote it is refused rather than run, possibly as admin. Returns an exit code.
+    param(
+        [Parameter(Mandatory)] [string] $Id,
+        [string] $ParamFile,
+        [string] $ParamHash
+    )
+    # Read and delete the options file first, so it never outlives the run whatever happens next.
+    $bytes = $null
+    if ($ParamFile) {
+        if (-not (Test-Path -LiteralPath $ParamFile)) { Write-Host "Options file missing: $ParamFile" -ForegroundColor Red; return 1 }
+        try { $bytes = [IO.File]::ReadAllBytes($ParamFile) }
+        finally { Remove-Item -LiteralPath $ParamFile -Force -ErrorAction SilentlyContinue }
+    }
+
+    $tool = $script:Tools | Where-Object { $_.id -eq $Id } | Select-Object -First 1
+    if (-not $tool) { Write-Host "No tool with id '$Id'." -ForegroundColor Red; return 1 }
+
+    $params = [ordered]@{}
+    if ($null -ne $bytes) {
+        if ((Get-ToolkitSha256 -Bytes $bytes) -ne $ParamHash) {
+            Write-Host 'The options file was changed after the toolkit wrote it, so this run was stopped.' -ForegroundColor Red
+            return 1
+        }
+        $saved = [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json
+        foreach ($prop in $saved.PSObject.Properties) { $params[$prop.Name] = $prop.Value }
+    }
+
+    $rule = '  ' + ('-' * 70)
+    Write-Host $rule -ForegroundColor DarkCyan
+    Write-Host "   $($tool.name)" -ForegroundColor Cyan
+    Write-Host $rule -ForegroundColor DarkCyan
+    if ($params.Count) {
+        $shown = foreach ($k in $params.Keys) { if ($params[$k] -is [bool]) { "-$k" } else { "-$k $($params[$k])" } }
+        Write-Host ('   Options: ' + ($shown -join ' ')) -ForegroundColor DarkGray
+    }
+    Write-Host ''
+
+    try {
+        $out = Invoke-ToolkitTool -Id $Id -Parameters $params
+        if ($tool.mode -eq 'process' -and $out) { $out | Out-String | Write-Host }
+        $run = @($out) | Where-Object { $_ -and $_.PSObject.Properties['ExitCode'] } | Select-Object -Last 1
+        if ($tool.mode -eq 'child' -and $run) { return [int]$run.ExitCode }
+        return 0
+    }
+    catch {
+        Write-Host "  Failed: $($_.Exception.Message)" -ForegroundColor Red
+        return 1
+    }
+}
+
 function Start-ElevatedToolkit {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Only opens a UAC prompt; the user confirms there.')]
-    param()
+    [CmdletBinding()]
+    param([switch] $Console)
     # Plain -File rather than -EncodedCommand: encoded PowerShell is exactly what EDR (Huntress, Defender) flags.
     $starter = Join-Path $script:ModuleRoot 'Start-Toolkit.ps1'
-    Start-Process -FilePath (Get-ToolkitHostPath) -Verb RunAs `
-        -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -NoExit -File {0}' -f (Format-ToolkitArgument $starter))
+    $argLine = if ($Console) { '-NoProfile -ExecutionPolicy Bypass -NoExit -File {0} -Console' }
+               else { '-NoProfile -ExecutionPolicy Bypass -File {0}' }
+    Start-Process -FilePath (Get-ToolkitHostPath) -Verb RunAs -ArgumentList ($argLine -f (Format-ToolkitArgument $starter))
 }
 
 # ------------------------------------------------------------------------------------------------
@@ -245,16 +358,21 @@ function Invoke-ToolkitTool {
         default {
             $argLine = '-NoProfile -ExecutionPolicy Bypass -File {0} {1}' -f `
                 (Format-ToolkitArgument $path), (ConvertTo-ToolkitArgumentString $splat)
-            $p = Start-Process -FilePath (Get-ToolkitHostPath) -ArgumentList $argLine.Trim() `
-                -WorkingDirectory (Split-Path $path) -Wait -PassThru -NoNewWindow
+            if (Test-ToolkitStreamOutput) {
+                $exitCode = Invoke-ToolkitChildStreamed -FilePath (Get-ToolkitHostPath) -Arguments $argLine.Trim() `
+                    -WorkingDirectory (Split-Path $path)
+            }
+            else {
+                $p = Start-Process -FilePath (Get-ToolkitHostPath) -ArgumentList $argLine.Trim() `
+                    -WorkingDirectory (Split-Path $path) -Wait -PassThru -NoNewWindow
+                $exitCode = $p.ExitCode
+            }
 
-            $ok = @(0)
-            if ($tool.successCodes) { $ok = @($tool.successCodes) }
-            $result = if ($p.ExitCode -in $ok) { 'OK' } else { 'CHECK LOG' }
+            $result = Get-ToolkitRunResult -Tool $tool -ExitCode $exitCode
             $colour = if ($result -eq 'OK') { 'Green' } else { 'Yellow' }
-            Write-Host ("`n{0} finished - exit code {1} [{2}]" -f $tool.name, $p.ExitCode, $result) -ForegroundColor $colour
+            Write-Host ("`n{0} finished - exit code {1} [{2}]" -f $tool.name, $exitCode, $result) -ForegroundColor $colour
 
-            [pscustomobject]@{ Id = $tool.id; Name = $tool.name; ExitCode = $p.ExitCode; Result = $result }
+            [pscustomobject]@{ Id = $tool.id; Name = $tool.name; ExitCode = $exitCode; Result = $result }
         }
     }
 }
@@ -262,15 +380,17 @@ function Invoke-ToolkitTool {
 function Show-EndpointToolkit {
     <#
     .SYNOPSIS
-        Opens the interactive toolkit menu.
+        Opens the toolkit's console menu.
     .DESCRIPTION
         Pick a number to see what that tool does, then answer y to run it (anything else goes back).
         Tools that need admin offer to relaunch the toolkit elevated.
         Tools with options ask for them next (press Enter to take the default).
+        This is the console menu: it works anywhere, including remote sessions and RMM shells.
+        For the window, use Show-EndpointToolkitGui (etk).
     .EXAMPLE
         Show-EndpointToolkit
     .EXAMPLE
-        etk
+        etkc
     #>
     [CmdletBinding()]
     param()
@@ -321,7 +441,7 @@ function Show-EndpointToolkit {
         if ($choice -match '^(q|quit|exit)$') { return }
         if ($choice -match '^a$') {
             if ($isAdmin) { continue }
-            Start-ElevatedToolkit
+            Start-ElevatedToolkit -Console
             Write-Host '  Elevated toolkit opening in a new window. This one can be closed.' -ForegroundColor Green
             return
         }
@@ -334,7 +454,7 @@ function Show-EndpointToolkit {
             # Nothing runs here; the elevated window shows the brief again and asks "Run it?" there.
             $answer = Read-ToolkitInput '  This one needs admin. Relaunch the toolkit elevated? [Y/n]'
             if ($answer -notmatch '^\s*n') {
-                Start-ElevatedToolkit
+                Start-ElevatedToolkit -Console
                 Write-Host '  Elevated toolkit opening in a new window. This one can be closed.' -ForegroundColor Green
                 return
             }
@@ -387,7 +507,11 @@ foreach ($tool in $script:Tools) {
     $script:ToolCommands += $tool.command
 }
 
-Set-Alias -Name etk -Value Show-EndpointToolkit
+# The WPF window (Show-EndpointToolkitGui and its helpers) lives in its own file.
+. (Join-Path (Join-Path $PSScriptRoot 'Gui') 'ToolkitGui.ps1')
 
-Export-ModuleMember -Function (@('Get-ToolkitTool', 'Invoke-ToolkitTool', 'Show-EndpointToolkit') + $script:ToolCommands) `
-                    -Alias etk
+Set-Alias -Name etk  -Value Show-EndpointToolkitGui
+Set-Alias -Name etkc -Value Show-EndpointToolkit
+
+Export-ModuleMember -Function (@('Get-ToolkitTool', 'Invoke-ToolkitTool', 'Show-EndpointToolkit', 'Show-EndpointToolkitGui') + $script:ToolCommands) `
+                    -Alias etk, etkc

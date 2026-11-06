@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.6.0 - 2026-11-06
+
+### Added
+- **Toolkit window (WPF).** Tool list grouped by category with search on the left. Pick a tool to see its brief, tags (category, needs admin, opens a window), any warning, and its options as checkboxes, choices and text boxes. **Run** starts it in its own PowerShell window: with a UAC prompt when it needs admin, and a Yes/No check first for tools with a warning. A panel at the bottom shows each run's exit code and OK / CHECK LOG. Follows Windows' light or dark mode (`ETK_THEME=Dark` or `Light` overrides), and a sun / moon button in the title bar switches it live for that window (nothing saved). Built into Windows, nothing to download.
+  - Looks: its own dark title bar (WindowChrome, no native code), an icon per tool from Windows' icon font (Segoe Fluent Icons / Segoe MDL2 Assets), short names in the list with a shield on admin tools, rounded search box, thin scrollbars, and themed checkboxes and radio buttons.
+  - Pills beside the name: **Read-only**, **Read-only by default** (an option can change that) or **Changes the machine**, plus **Needs admin** and **Opens a window**.
+- `tools.json`: `icon` (an icon-font code point) for every tool, and `readOnly` (`true` or `"default"`) for the ten tools that change nothing. Tests check every brief agrees with its flag.
+- **`console.ps1` one-liner** for remote shells: `irm .../console.ps1 | iex` always opens the console menu. `install.ps1` and `Start-Toolkit.ps1` take `-Console` for the same thing.
+- `Show-EndpointToolkitGui` command. `etk` now opens the window; `etkc` opens the console menu.
+- `Gui\Invoke-ToolWindow.ps1` runs one tool for the window. Options travel in a temp file with its SHA-256 on the command line; a file that doesn't match is refused, and the file is deleted once read.
+
+### Changed
+- Exchange + Planner usage brief: it said it changes nothing in the tenant, but if the tenant hides names in usage reports it offers to show them for the run (and hides them again). The brief now says so. M365 licence report brief now says it installs modules only if ticked.
+- `install.ps1` (and `Launch-Toolkit.cmd`, and the exe) open the window. Where there's no desktop (remote session, RMM shell running as a service, Server Core, or WPF missing) they fall back to the console menu by themselves.
+- **Remote sessions:** child-mode tools now pipe their output back to your session as they run. Before, `Start-Process -NoNewWindow` output was lost over `Enter-PSSession`. Their input is closed, so a question mid-run gets a blank (safe) answer instead of hanging. Detected automatically; `ETK_STREAM=1` or `0` forces it.
+
+### Tests
+- Window: layout and code agree on all 20 named controls and every colour. Light and dark palettes match. Untouched options give exactly what pressing Enter at every console prompt gives, for all 24 tools. Required boxes, bad choices, run plans, tags and labels are checked. The options-file hash check is tested, including a changed file. The Run button's launch path is tested end to end. On Windows the window is built and clicked through in code (select, options, search, Run with a required box empty), never shown.
+- Remote output: child tools tested both ways (own console, piped back), including a mid-run question.
+
 ## 1.5.0 - 2026-11-06
 
 ### Changed

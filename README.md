@@ -2,11 +2,39 @@
 
 [![CI](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml)
 
-A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a menu, as a module, or with a single line pasted into any machine. No USB stick, nothing to copy across.
+A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
+
+```
+┌ Endpoint Toolkit v1.6.0 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+│ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
+│ Build                       │                                                                                  │
+│   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
+│   McAfee removal     admin  │  starts it again. Shows how many jobs are queued first. Printers, drivers and    │
+│   ...                       │  settings aren't touched.                                                        │
+│ Repair                      │                                                                                  │
+│   Teams cache clear         │  Warning: Deletes every queued print job on this PC - people will need to        │
+│ > Print spooler clear admin │  print again.                                                                    │
+│   Office activation  admin  │                                                                                  │
+│   ...                       │  Options                                                                         │
+│ Diagnose                    │  None. It just runs.                                                             │
+│   Quick triage              │                                                                                  │
+│   ...                       │                                                                                  │
+│                             │  Windows asks for admin rights (UAC), then it    [ Run as admin ]                │
+│                             │  runs in its own PowerShell window.                                              │
+├─────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────┤
+│ Runs from this window   11:02   Quick triage - finished, exit code 0 [OK]                                      │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Pick a tool (or search) to see what it does, whether it changes anything, any warning and its options. Nothing runs until you click **Run**. Every tool has its own icon (from Windows' built-in icon font), and a shield marks the ones that need admin. Each tool then opens in its own PowerShell window, with a UAC prompt first if it needs admin, so you can carry on in the toolkit while it works. The bottom panel shows how each run finished. The window follows Windows' light or dark mode; the sun / moon button in the title bar flips it for that session.
+
+### Console menu (remote shells)
+
+Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop for a window, so the toolkit uses a console menu instead. It does this by itself, or you can ask for it with `console.ps1` (see Quick start). Same tools, same briefs, same options:
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.5.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.6.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -47,6 +75,8 @@ A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and
 
 Pick a number and nothing runs yet. You get a short brief first: what the tool does, what it changes, any warning, and how many questions follow. Then `Run it? [y/N]`. Only `y` runs it; anything else (Enter included) goes back to the menu.
 
+In a remote session, each tool's output is piped back to your session as it runs. Nobody can answer a question halfway through a run there, so tools that would ask take the safe answer: the OEM updater lists updates without installing, for example.
+
 ```
   ----------------------------------------------------------------------
    Print spooler clear
@@ -62,20 +92,26 @@ Pick a number and nothing runs yet. You get a short brief first: what the tool d
 
 ## Quick start
 
-Open PowerShell **as Administrator** on the machine and paste:
+On the machine itself, open PowerShell (as Administrator saves a UAC prompt per tool) and paste:
 
 ```powershell
 irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1 | iex
 ```
 
-That downloads the toolkit to `C:\ProgramData\EndpointToolkit\`, unblocks it and opens the menu. If you're not elevated, the menu offers to relaunch itself as admin when a tool needs it.
+In a remote shell (`Enter-PSSession`, RMM console), or any time you want the console menu:
+
+```powershell
+irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/console.ps1 | iex
+```
+
+Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. The first opens the window, and falls back to the console menu by itself where there's no desktop. The second always opens the console menu.
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.5.0` |
-| Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.6.0` (add `-Console` for the console menu) |
+| Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
-| Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` |
+| Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |
 
 ## Tools
 
@@ -114,6 +150,9 @@ Every tool is also a command with the script's own parameters, tab completion an
 ```powershell
 Import-Module EndpointToolkit
 
+etk                     # the window (Show-EndpointToolkitGui)
+etkc                    # the console menu (Show-EndpointToolkit)
+
 Invoke-QuickTriage -Html
 Get-EntraIntuneHealth -Sync
 Get-DeviceInventory -Html
@@ -130,11 +169,14 @@ Get-Help Get-DiskUsageReport -Full
 
 ```
 install.ps1 ──> downloads repo zip @ ref ──> C:\ProgramData\EndpointToolkit\<ref>-<time>\
-                                              │
-                                              ├─ EndpointToolkit.psm1  reads tools.json, builds the menu and commands
+(console.ps1 = install.ps1 -Console)          │
+                                              ├─ EndpointToolkit.psm1  reads tools.json, builds the console menu and commands
+                                              ├─ Gui\                  the window: layout (XAML), code, and the per-run launcher
                                               ├─ tools.json            one entry per tool: path, brief, admin, mode, prompts
                                               └─ Tools\<Tool>\*.ps1    the scripts, unchanged by the toolkit
 ```
+
+The window and the console menu share everything: the same `tools.json`, briefs, options and run code. When you click **Run** in the window, it starts `Gui\Invoke-ToolWindow.ps1` in a new PowerShell window (elevated with UAC when the tool needs admin), and that runs the tool exactly as the console menu would.
 
 Each tool runs in one of three modes (set per tool in `tools.json`):
 
@@ -180,6 +222,7 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
 - Nothing in this repo is tenant- or client-specific: no IDs, credentials or names. Every run asks for what it needs. CI runs a secret scan (gitleaks) on every push.
 - Execution policy is only relaxed for the current process. If Group Policy enforces `AllSigned`, the launcher can't run until the scripts are signed.
 - The launchers use plain `-File` / `-Command`, never `-EncodedCommand`, so they don't look like malware to EDR.
+- **Runs from the window.** The options you pick go to the new PowerShell window in a temp file, with the file's SHA-256 on the command line. The run refuses a file that doesn't match, so nothing can swap the options between you clicking Run and the tool starting elevated. The file is deleted as soon as it's read. Admin tools get their own UAC prompt per run; the window itself doesn't need to be elevated.
 - **What gets downloaded at run time.** Nothing third-party is bundled in this repo. Some tools fetch software from the vendor when they run:
 
   | Tool | Downloads | Check before it runs |
@@ -204,7 +247,7 @@ The exe is a small stub that runs the one-line launcher, so it never goes stale.
 powershell -ExecutionPolicy Bypass -File .\tests\Test-Repo.ps1
 ```
 
-The tests check that every script parses, that `tools.json` matches the scripts' real parameters and the module exports match the manifest, that every tool has a brief, that values with spaces and switches reach a child process intact, and that the menu works end to end with scripted input (including that saying no to `Run it?` runs nothing). They finish with a leak scan. Add your own private patterns (employer or client names) to `tests\leak-patterns.local.txt`. That file is git-ignored, so it's checked but never committed. CI runs the same tests on Windows PowerShell 5.1 and PowerShell 7, plus PSScriptAnalyzer (pinned to 1.25.0 and run one file at a time; its known intermittent crash is retried once, then shown as a warning naming the file). Any Error-severity finding fails the build.
+The tests check that every script parses, that `tools.json` matches the scripts' real parameters and the module exports match the manifest, that every tool has a brief, that values with spaces and switches reach a child process intact, and that the menu works end to end with scripted input (including that saying no to `Run it?` runs nothing). For the window, they check that the layout and the code agree on every control and colour, that untouched options give exactly what pressing Enter at every console prompt gives (all tools), that a changed options file is refused, and that tool output reaches a remote session. On Windows (CI) they also build the window and click through it in code without showing it. They finish with a leak scan. Add your own private patterns (employer or client names) to `tests\leak-patterns.local.txt`. That file is git-ignored, so it's checked but never committed. CI runs the same tests on Windows PowerShell 5.1 and PowerShell 7, plus PSScriptAnalyzer (pinned to 1.25.0 and run one file at a time; its known intermittent crash is retried once, then shown as a warning naming the file). Any Error-severity finding fails the build.
 
 ## Licence
 

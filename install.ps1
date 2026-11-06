@@ -1,16 +1,21 @@
 <#
 .SYNOPSIS
-    One-line launcher for Endpoint Toolkit. Downloads the toolkit from GitHub and opens the menu.
+    One-line launcher for Endpoint Toolkit. Downloads the toolkit from GitHub and opens the window.
 
 .DESCRIPTION
     Paste into PowerShell (as Administrator for the build tools):
 
         irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1 | iex
 
+    For remote shells (Enter-PSSession, RMM consoles) there's a console-menu version:
+
+        irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/console.ps1 | iex
+
     What it does:
       1. Downloads the repo at the chosen ref (branch, tag or commit) as a zip from GitHub.
       2. Extracts it to C:\ProgramData\EndpointToolkit\<ref>-<timestamp>\ and unblocks the files.
-      3. Imports the module and opens the menu. Older copies beyond the newest three are tidied up.
+      3. Imports the module and opens the window (or the console menu where there's no desktop, or
+         with -Console). Older copies beyond the newest three are tidied up.
 
     Nothing is installed permanently unless you pass -Install.
 
@@ -22,8 +27,11 @@
     Also copy the module into your PowerShell modules folder, so later you can just run:
         Import-Module EndpointToolkit; etk
 
+.PARAMETER Console
+    Open the console menu instead of the window. console.ps1 is this with -Console.
+
 .PARAMETER NoMenu
-    Download and import only; don't open the menu.
+    Download and import only; don't open the window or menu.
 
 .EXAMPLE
     irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1 | iex
@@ -34,12 +42,13 @@
 param(
     [string] $Ref,
     [switch] $Install,
+    [switch] $Console,
     [switch] $NoMenu
 )
 
 # Everything runs inside this block so nothing (like $ErrorActionPreference) leaks into your session.
 & {
-    param([string] $Ref, $Install, $NoMenu)
+    param([string] $Ref, $Install, $Console, $NoMenu)
 
     $ErrorActionPreference = 'Stop'
     $ProgressPreference    = 'SilentlyContinue'   # Invoke-WebRequest in 5.1 crawls with the progress bar on
@@ -103,12 +112,14 @@ param(
         New-Item -ItemType Directory -Path $installTo -Force | Out-Null
         Copy-Item -Path (Join-Path $moduleRoot '*') -Destination $installTo -Recurse -Force
         Write-Host "Installed to $installTo" -ForegroundColor Green
-        Write-Host "Next time: Import-Module EndpointToolkit; etk" -ForegroundColor Green
+        Write-Host "Next time: Import-Module EndpointToolkit; etk   (etkc for the console menu)" -ForegroundColor Green
         Write-Host "(If Import-Module is blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned)" -ForegroundColor DarkGray
     }
 
     Import-Module -Name $psd1.FullName -Force -Global
     Write-Host "Loaded from $moduleRoot" -ForegroundColor DarkGray
 
-    if (-not $NoMenu) { Show-EndpointToolkit }
-} $Ref $Install $NoMenu
+    if (-not $NoMenu) {
+        if ($Console) { Show-EndpointToolkit } else { Show-EndpointToolkitGui }
+    }
+} $Ref $Install $Console $NoMenu
