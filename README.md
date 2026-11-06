@@ -231,7 +231,7 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
   | M365 Apps reset `-DeepClean`, Office activation reset | Microsoft Get Help command line (`aka.ms/SaRA_EnterpriseVersionFiles`) | Must be validly signed by Microsoft, or it won't run. Deleted afterwards |
   | OEM drivers + BIOS | Dell Command Update / HP Image Assistant via **winget**, or the LSUClient module (MIT) from the **PowerShell Gallery** for Lenovo | **Asks first.** Only `-InstallTool` installs without asking; New device setup uses it, since a build runs unattended. The vendor tools then fetch updates from Dell, HP or Lenovo |
   | Intune primary user (and New device setup when setting one) | Microsoft's `Microsoft.Graph.Authentication` module from the **PowerShell Gallery**, if it isn't installed | Every DLL must be validly signed, and the module's own by Microsoft, or it's deleted and not loaded. Cached in `ProgramData\EndpointToolkit\_modules`; New device setup deletes it at the end |
-  | Chrome + Adobe Reader | Installers straight from Google's and Adobe's download servers (HTTPS) | Vendor URLs only. Not signature-checked by the toolkit |
+  | Chrome + Adobe Reader | Installers straight from Google's and Adobe's download servers (HTTPS) | Must be validly signed by Google LLC / Adobe Inc., or it's deleted and not installed |
   | M365 licence report | Microsoft Graph and ImportExcel modules from the PowerShell Gallery | Only with `-InstallMissingModules` |
 
 ## Building an .exe (optional)

@@ -46,14 +46,24 @@ Examples:
 
 **Chrome**
 - Pulls `googlechromestandaloneenterprise64.msi` from Google — that URL always serves current stable.
-- Checks the installed version against Google's version history API first; skips if already current.
+- Checks the signature (see below), then reads the version from the MSI itself and skips if that
+  version is already installed.
 - Installs with `/qn /norestart`.
 
 **Adobe Reader**
 - Queries Adobe's release feed for the current 64-bit build, then downloads the **offline** installer
   direct from `ardownload2.adobe.com`. The consumer web stub is what bundles McAfee and browser
   offers — the offline exe never has them.
+- Checks the signature (see below).
 - Installs with `/sAll /rs /rps /msi /quiet EULA_ACCEPT=YES REMOVE_PREVIOUS=YES DISABLEDESKTOPSHORTCUT=1`.
+
+**Signature check** (both apps, before anything runs)
+- Windows must report the installer's signature as **Valid**: signed, not changed since, and chained
+  to a trusted root.
+- The signing certificate's organisation (`O=`) must be exactly **`Google LLC`** for Chrome and
+  **`Adobe Inc.`** for Reader. A renewed certificate still passes; a look-alike name doesn't.
+- Anything else is deleted and not installed, and the log says what it was actually signed by.
+- If one app is refused or fails, the other still installs, and the script exits `1`.
 
 **Post-install hardening** (skip with `-SkipHardening`)
 - Writes `HKLM\SOFTWARE\Policies\Adobe\...\DC\FeatureLockDown` to disable:
@@ -77,7 +87,8 @@ Examples:
 
 - Logs: `C:\ProgramData\AppDeploy\Logs\Install-ChromeAndReader_<timestamp>.log`
 - MSI verbose logs: `Chrome_msi.log` and `Reader_msi.log` in the same folder
-- Exit `0` = success, exit `1` = failure (reason in the log)
+- Exit `0` = everything asked for is installed or already current
+- Exit `1` = an app failed to download, failed the signature check or failed to install (reason in the log)
 - MSI exit `3010` is treated as success — reboot pending
 
 ---
@@ -122,6 +133,7 @@ Or use a file-based rule against
 |---|---|
 | `Adobe release API unreachable` warning | Feed timed out; the pinned fallback build in `Get-ReaderDownload` is used. Update that version string occasionally. |
 | Reader download 404s | Language code doesn't exist for that build. Fall back to `-Language MUI`. |
+| `failed the signature check` | Don't override it. `status: HashMismatch` means the file was changed or cut short; retry the download. `NotTrusted` / `UnknownError` usually means Windows can't build the certificate chain, e.g. root certificates missing on an image that's never been online or has root certificate updates blocked. A different `signed by:` name means either the vendor renamed itself (check, then update the name in the script) or the download isn't from the vendor. |
 | Exit code 1603 on Reader | Usually an existing Reader/Acrobat install mid-repair. Reboot, then rerun. |
 | Script won't run | `Unblock-File` it, and confirm you're in an elevated session. |
 | Chrome skipped unexpectedly | Already at current stable. Force with `-Apps Chrome` after uninstalling, or ignore. |

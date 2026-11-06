@@ -13,6 +13,9 @@
     - Post-install: writes FeatureLockDown policy so Reader ships without Document
       Cloud, Adobe Express / Firefly hooks, AI Assistant, Dropbox/Drive connectors,
       Acrobat Pro upsell, and the auto-deployed browser extension.
+    - Each installer must be validly signed by its vendor (Google LLC / Adobe Inc.)
+      before it runs. Anything else is deleted and not installed.
+    - One app failing (or being refused) doesn't stop the other.
 
 .PARAMETER Apps
     Which apps to install. Default: both.
@@ -26,6 +29,10 @@
 .EXAMPLE
     .\Install-ChromeAndReader.ps1
     .\Install-ChromeAndReader.ps1 -Apps Reader -Language en_US
+
+.NOTES
+    Exit 0 = everything asked for is installed or already current.
+    Exit 1 = an app failed to download, failed the signature check or failed to install.
 #>
 
 #Requires -RunAsAdministrator
@@ -80,6 +87,37 @@ function Get-File {
     Write-Log "Downloaded $([IO.Path]::GetFileName($OutFile)) ($sizeMb MB)"
 }
 
+function Get-SignerOrganisation {
+    # The O= part of a certificate subject: 'Google LLC' from
+    # 'CN=Google LLC, O=Google LLC, L=Mountain View, S=California, C=US'.
+    # Handles quoted values (O="Example, Inc."). OU= is not O=.
+    param([string]$Subject)
+    if ($Subject -match '(?:^|,\s*)O=(?:"([^"]*)"|([^,]*))') { return ("$($Matches[1])$($Matches[2])").Trim() }
+    $null
+}
+
+function Confirm-InstallerSignature {
+    # Refuses an installer unless Windows says its signature is Valid (signed, unchanged
+    # since signing, chains to a trusted root) AND the signing certificate's organisation
+    # is exactly the expected vendor. Matching on O= rather than a thumbprint means a
+    # renewed certificate keeps working; matching it exactly means a look-alike name
+    # doesn't. Anything that fails is deleted on the spot.
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Publisher
+    )
+    $file   = [IO.Path]::GetFileName($Path)
+    $sig    = Get-AuthenticodeSignature -FilePath $Path
+    $signer = if ($sig.SignerCertificate) { Get-SignerOrganisation $sig.SignerCertificate.Subject }
+    if ("$($sig.Status)" -ne 'Valid' -or $signer -ne $Publisher) {
+        Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+        $who = if ($signer) { $signer } else { 'nobody' }
+        throw ("$file failed the signature check (status: $($sig.Status), signed by: $who, " +
+               "expected: $Publisher). Deleted it; not installing.")
+    }
+    Write-Log "Signature OK: $file is signed by $Publisher"
+}
+
 # ---------------------------------------------------------------- Google Chrome
 function Get-MsiProductVersion {
     # Reads ProductVersion straight out of the MSI property table.
@@ -112,6 +150,7 @@ function Install-Chrome {
     if ($installed) { Write-Log "Chrome currently installed: $($installed.DisplayVersion)" }
 
     Get-File -Uri $msiUrl -OutFile $msi
+    Confirm-InstallerSignature -Path $msi -Publisher 'Google LLC'
 
     $msiVersion = Get-MsiProductVersion -Path $msi
     if ($msiVersion) { Write-Log "Downloaded MSI is Chrome $msiVersion" }
@@ -143,10 +182,10 @@ function Install-Chrome {
                    '/qn', '/norestart', '/l*v', "`"$msiLog.retry.log`"")
         $p2 = Start-Process msiexec.exe -ArgumentList $retry -Wait -PassThru
         if ($p2.ExitCode -in 0,3010) { Write-Log "Chrome installed OK on retry (exit $($p2.ExitCode))." }
-        else { Write-Log "Chrome install failed on retry - exit $($p2.ExitCode). See $msiLog.retry.log" 'ERROR' }
+        else { throw "Chrome install failed on retry - exit $($p2.ExitCode). See $msiLog.retry.log" }
     }
     else {
-        Write-Log "Chrome install failed - exit code $($p.ExitCode). See $msiLog" 'ERROR'
+        throw "Chrome install failed - exit code $($p.ExitCode). See $msiLog"
     }
 
     Remove-Item $msi -Force -ErrorAction SilentlyContinue
@@ -195,6 +234,7 @@ function Install-Reader {
         if ($installed) { Write-Log "Reader $($installed.DisplayVersion) installed - upgrading." }
         $exe = Join-Path $WorkDir $dl.File
         Get-File -Uri $dl.Url -OutFile $exe
+        Confirm-InstallerSignature -Path $exe -Publisher 'Adobe Inc.'
 
         $msiLog = Join-Path $LogDir 'Reader_msi.log'
         # /sAll  = silent, all users      /rs = reboot suppress
@@ -209,7 +249,7 @@ function Install-Reader {
         Write-Log 'Installing Adobe Acrobat Reader (this takes a few minutes)...'
         $p = Start-Process $exe -ArgumentList $readerArgs -Wait -PassThru
         if ($p.ExitCode -in 0,3010) { Write-Log "Reader installed OK (exit $($p.ExitCode))." }
-        else { Write-Log "Reader install failed - exit code $($p.ExitCode). See $msiLog" 'ERROR' }
+        else { throw "Reader install failed - exit code $($p.ExitCode). See $msiLog" }
 
         Remove-Item $exe -Force -ErrorAction SilentlyContinue
     }
@@ -278,18 +318,23 @@ function Set-ReaderPolicy {
 # ------------------------------------------------------------------------ Main
 Write-Log "Log file: $Log"
 
+# Each app on its own, so a refused or failed Chrome doesn't stop Reader (or the reverse).
+$failed = @()
 try {
-    if ($Apps -in 'Chrome','Both') { Install-Chrome }
-    if ($Apps -in 'Reader','Both') { Install-Reader }
-}
-catch {
-    Write-Log $_.Exception.Message 'ERROR'
-    exit 1
+    foreach ($app in 'Chrome', 'Reader') {
+        if ($Apps -notin $app, 'Both') { continue }
+        try   { & "Install-$app" }
+        catch { Write-Log "${app}: $($_.Exception.Message)" 'ERROR'; $failed += $app }
+    }
 }
 finally {
     Remove-Item $WorkDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host ''
+if ($failed) {
+    Write-Log "FINISHED WITH PROBLEMS: $($failed -join ', ') - see $Log" 'ERROR'
+    exit 1
+}
 Write-Log 'INSTALL COMPLETE'
 exit 0

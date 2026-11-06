@@ -28,6 +28,8 @@
 - New device setup exits `1` when any step needs a look (it used to always exit `0`), so the window and menu show CHECK LOG.
 - `install.ps1` leaves folders starting with `_` (the module cache) alone when tidying old copies.
 - The New device setup guide is now `Tools/NewDeviceSetup/README.md` (was `README.txt`).
+- **Chrome + Reader installers are signature-checked.** Each must be validly signed by its vendor (certificate organisation exactly `Google LLC` / `Adobe Inc.`) before it runs; anything else is deleted and not installed. That was the last run-time download the toolkit didn't verify.
+- Chrome + Reader: one app failing no longer stops the other, and a failed download, signature check or install now exits `1`. Installs that failed used to log an error but still exit `0`, so the build report showed them as OK.
 
 ### Removed
 - **Hostname desktop shortcut** (`New-HostnameShortcut`, `Tools/HostnameShortcut`): gone from the toolkit, the menu and the window, along with its New device setup step and `-SkipHostnameShortcut`.
@@ -36,6 +38,7 @@
 - Build chain, with fake steps, 36 checks: step order and arguments, primary user given / not given / removed / failing, bad options refused before anything runs, a failing step not stopping the build, missing scripts, other makes, skipped drivers, drivers needing a restart, no reboot, Windows Update timing out, leftover McAfee, step output escaped in the HTML, briefs taken from `tools.json`.
 - Intune primary user, 27 checks: show, set, already set, remove, nothing to remove, unknown user, bad address, both options, not joined, not enrolled, not in Intune yet, no permission, sign-in cancelled, slow to update, disabled user, tenant override, device code with no desktop, module download, cache reuse, and signature refusals (unsigned DLL, tampered file, non-Microsoft signer).
 - OEM tool: 5 more checks for `-ResultFile` (now 43).
+- Chrome + Reader signature checks, 29 checks: valid, unsigned, tampered, untrusted, wrong company, look-alike names (`Google LLC Ltd`, `OU=` instead of `O=`, `CO=` inside another field), quoted names, refused file deleted, one app refused while the other installs, install failures and download failures exiting `1`.
 
 ## 1.6.0 - 2026-11-06
 

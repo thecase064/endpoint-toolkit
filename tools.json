@@ -187,7 +187,8 @@
       "brief": [
         "Downloads and silently installs the latest Google Chrome (Enterprise MSI) and Adobe Reader",
         "64-bit, with Adobe's cloud, AI Assistant and upsell bits switched off.",
-        "Installs software only; nothing is removed."
+        "Installs software only; nothing is removed.",
+        "Each installer must be validly signed by Google or Adobe, or it's deleted and not installed."
       ],
       "admin": true,
       "mode": "child",
