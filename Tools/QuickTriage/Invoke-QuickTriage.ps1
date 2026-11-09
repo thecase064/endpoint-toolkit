@@ -306,12 +306,12 @@ Invoke-Check 'Resources' {
     $top = Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 5 |
         ForEach-Object { if ($_.WorkingSet64 -ge 1GB) { '{0} {1:N1} GB' -f $_.ProcessName, ($_.WorkingSet64 / 1GB) } else { '{0} {1:N0} MB' -f $_.ProcessName, ($_.WorkingSet64 / 1MB) } }
     $text = '{0}% of {1} GB in use. Top: {2}' -f $usedPct, $totalGB, ($top -join ', ')
-    if ($usedPct -ge 90)   { Add-Finding 'Resources' 'Memory' 'WARN' $text $(if ($totalGB -le 8) { "Only $totalGB GB - this machine needs more RAM for modern Office + Teams + a browser." } else { 'Close or restart the top process; check it for a leak.' }) }
+    if ($usedPct -ge 90)   { Add-Finding 'Resources' 'Memory' 'WARN' $text $(if ($totalGB -le 8) { "Only $totalGB GB - this machine needs more RAM for modern Office + Teams + a browser." } else { 'Close or restart the top process; check it for a leak. Diagnose > Performance check measures it properly.' }) }
     else                   { Add-Finding 'Resources' 'Memory' 'PASS' $text }
 
     $load = (@(Get-CimInstance -ClassName Win32_Processor) | Measure-Object -Property LoadPercentage -Average).Average
     if ($null -ne $load) {
-        if ($load -ge 90) { Add-Finding 'Resources' 'CPU' 'WARN' ('{0:N0}% load right now' -f $load) 'Check Task Manager for the culprit (often an update, an AV scan or Teams).' }
+        if ($load -ge 90) { Add-Finding 'Resources' 'CPU' 'WARN' ('{0:N0}% load right now' -f $load) 'Run Diagnose > Performance check to see which app (often an update, an AV scan or Teams).' }
         else { Add-Finding 'Resources' 'CPU' 'PASS' ('{0:N0}% load right now' -f $load) }
     }
 }

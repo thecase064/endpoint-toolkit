@@ -464,6 +464,39 @@
       ]
     },
     {
+      "id": "performance-check",
+      "name": "Performance check (slow PC)",
+      "category": "Diagnose",
+      "icon": "E916",
+      "path": "Tools/PerformanceCheck/Invoke-PerformanceCheck.ps1",
+      "command": "Invoke-PerformanceCheck",
+      "description": "Why is it slow? Measures CPU, disk and memory for 30 seconds, names the apps responsible, and checks power settings, startup apps, hangs, SSD vs hard drive and RAM. -Fix offers undoable fixes, one question at a time.",
+      "brief": [
+        "Why is it slow? Measures the PC for 30 seconds - ask the user to do what's slow meanwhile -",
+        "then names the apps using CPU, memory and disk, and checks power settings, startup apps,",
+        "hangs, start-up time, SSD or hard drive, and RAM. Each problem comes with what to do.",
+        "Read-only by default. Say yes below to be offered fixes you can undo, one at a time.",
+        "Run as admin to see start-up times. Never restarts."
+      ],
+      "admin": false,
+      "readOnly": "default",
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Html",
+          "type": "switch",
+          "prompt": "Write the one-page HTML report too?",
+          "default": true
+        },
+        {
+          "param": "Fix",
+          "type": "switch",
+          "prompt": "Offer fixes afterwards (power plan, startup apps), asking before each one?",
+          "default": false
+        }
+      ]
+    },
+    {
       "id": "entra-intune-health",
       "name": "Entra / Intune health check",
       "category": "Diagnose",

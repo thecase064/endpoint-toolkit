@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.8.0 - 2026-11-09
+
+### Added
+- **Performance check (slow PC)** (`Invoke-PerformanceCheck`, Diagnose). It measures the PC for 30 seconds while the user does whatever is slow, then reports why, problems first, each with what to do:
+  - **Hardware:** Windows on a hard drive or an SSD, free space, RAM size, and a single RAM stick in a two-slot machine.
+  - **Load:** CPU, system drive and memory averaged over the sample, plus paging and a missing page file.
+  - **Power:** on battery, power plan, power mode, maximum processor state, and whether the CPU ran below its normal speed while it was busy.
+  - **Apps:** what used the CPU, memory and disk, grouped by app, with advice for Teams, Defender scans, search indexing, OneDrive, Windows Update, browsers, Outlook, leftover McAfee and more.
+  - **Stability:** app hangs, and Windows' low-memory warnings with the apps they name.
+  - **Startup:** recent start-up times, what Windows says slowed start-up, and every startup app (Run keys, Startup folders, Store apps), on or off.
+  - **Drivers:** BIOS age, and a missing or old graphics driver.
+  - Uptime and pending restarts.
+- **`-Fix`**: after the report, it offers only changes you can undo, one question at a time: the power plan from Power saver to Balanced, the maximum processor state back to 100%, and startup apps you pick, turned off the way Task Manager does it. Security, remote support, VPN, driver helpers and OneDrive are never offered. Each change is listed with its undo. It never restarts. A blank answer (remote session, RMM) changes nothing.
+- When run elevated as a different account, it reads and changes the startup apps of the person signed in at the PC, not the admin's.
+
+### Changed
+- Quick triage's memory and CPU warnings now point at Performance check.
+- Test-Repo's leak scan allows Windows' built-in power plan and power mode GUIDs, listed by name.
+
+### Tests
+- Performance check, 121 checks with faked CIM, event logs, registry, powercfg and typed answers: a healthy PC (nothing flagged), a slow PC (every check firing, FAILs first, hardware first), process grouping and exact CPU maths, the system disk picked over a busier data disk, power mode names, the maximum processor state read from `powercfg` output, boot times and what slowed start-up, low-memory messages in either case, hangs by app, Task Manager's on/off flag (02, 06 on; 03 off; no entry on), Store app startup tasks, Startup folders, 32-bit Run keys, the never-offered list, and HTML escaping.
+  - `-Fix`: yes / no / numbers with duplicates and junk, blank answers changing nothing, failed changes recorded as failed, nothing to fix, admin-only apps not offered without admin, the signed-in user's hive used when elevated as someone else, a policy-set plan not offered.
+  - Robustness: the measurement failing, no CPU speed counter, no Storage module, no inventory.
+  - Each key behaviour was also broken on purpose to prove the tests catch it.
+
 ## 1.7.2 - 2026-11-06
 
 ### Fixed

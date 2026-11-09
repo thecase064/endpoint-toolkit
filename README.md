@@ -5,7 +5,7 @@
 A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
-┌ Endpoint Toolkit v1.7.2 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+┌ Endpoint Toolkit v1.8.0 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
 │ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
 │ Build                       │                                                                                  │
 │   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
@@ -34,7 +34,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.7.2                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.8.0                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -59,16 +59,17 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
    DIAGNOSE
     16  Quick triage (first five minutes)
-    17  Entra / Intune health check
-    18  BitLocker key backup check                    admin
-    19  Device inventory (hardware + OS)
-    20  Disk usage report (HTML)
-    21  Disk usage browser (GUI)                      window
-    22  Event triage (GUI)                            window
+    17  Performance check (slow PC)
+    18  Entra / Intune health check
+    19  BitLocker key backup check                    admin
+    20  Device inventory (hardware + OS)
+    21  Disk usage report (HTML)
+    22  Disk usage browser (GUI)                      window
+    23  Event triage (GUI)                            window
 
    REPORT
-    23  M365 licence report (Excel)
-    24  Exchange + Planner usage report
+    24  M365 licence report (Excel)
+    25  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -108,7 +109,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.7.2` (add `-Console` for the console menu) |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.8.0` (add `-Console` for the console menu) |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |
@@ -132,6 +133,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 | | [Office activation reset](Tools/OfficeActivation) | Microsoft's Get Help `ResetOfficeActivation`: clears Office licences and cached sign-ins so the user can activate fresh. Downloaded each run and checked for Microsoft's signature. | `Reset-OfficeActivation` |
 | | [Teams Meeting add-in fix](Tools/TeamsAddin) | The missing Teams Meeting button in classic Outlook: checks the add-in is installed and registered, fixes LoadBehavior and Outlook's disabled and do-not-disable lists, and gives Microsoft's reinstall steps for the rest. | `Repair-TeamsMeetingAddin` |
 | **Diagnose** | [Quick triage](Tools/QuickTriage) | The first five minutes of any ticket on one page: device, uptime, pending reboot, disk space and health, crashes, updates, antivirus, Entra/Intune, memory and network. Problems first, each with a next step, plus a one-line summary for the ticket. `-Reports` adds Windows' own Wi-Fi and battery reports. | `Invoke-QuickTriage` |
+| | [Performance check](Tools/PerformanceCheck) | "Why is it slow?" Measures CPU, disk and memory for 30 seconds while the user does what's slow, names the apps responsible (grouped, with advice for Teams, Defender scans, indexing, OneDrive, browsers and more), and checks power plan and mode, CPU held below its normal speed, startup apps, start-up time, hangs, low-memory warnings, SSD or hard drive, RAM size and sticks, BIOS and graphics driver age. Read-only; `-Fix` offers only undoable fixes (power plan, maximum processor state, startup apps the Task Manager way), one question at a time, and never touches security, remote support, VPN or driver helpers. | `Invoke-PerformanceCheck` |
 | | [Entra / Intune health check](Tools/EntraIntuneHealth) | Join state, device auth, PRT, MDM enrolment, Intune certificate expiry, last check-in, push service, IME, event log errors and endpoint reachability, each with a fix hint. Can force a sync or zip the logs for escalation. Exit code 1 on failure, so it doubles as a remediation detection script. | `Get-EntraIntuneHealth` |
 | | [BitLocker key backup check](Tools/BitLockerBackup) | Is every recovery key backed up to Entra? Checks each key against the BitLocker event log (845/846, with the error explained); `-Fix` backs up the missing ones. Never shows the keys themselves. | `Test-BitLockerKeyBackup` |
 | | [Device inventory](Tools/DeviceInventory) | Model, serial, BIOS, OS build, every RAM stick, disks with health and wear, monitors with serials, battery wear, network, TPM and Secure Boot. Console, HTML or JSON. | `Get-DeviceInventory` |
