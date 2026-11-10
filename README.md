@@ -5,7 +5,7 @@
 A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
-┌ Endpoint Toolkit v1.8.0 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+┌ Endpoint Toolkit v1.8.1 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
 │ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
 │ Build                       │                                                                                  │
 │   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
@@ -34,7 +34,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.8.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.8.1                   thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -109,7 +109,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.8.0` (add `-Console` for the console menu) |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.8.1` (add `-Console` for the console menu) |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |

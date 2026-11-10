@@ -251,6 +251,7 @@ switch ($vendor) {
         6 = 'Dell Command | Update is already running (app or another script). Close it and retry.'
         7 = 'Dell Command | Update doesn''t support this model.'
         8 = 'No update types selected (toolkit bug - please report it).'
+        107 = 'Dell Command | Update rejected an option (often a folder it won''t write to) - its reason is in the log.'
         501 = 'The scan failed while working out the available updates.'
         503 = 'A download failed during the scan - check the internet connection.'
         1000 = 'Couldn''t read the result of the install.'
@@ -261,8 +262,21 @@ switch ($vendor) {
         3005 = 'The Dell Client Management Service is installing pending updates - wait and retry.'
     }
 
+    # DCU 5.x refuses "reserved" folders for -report/-outputLog (exit 107) - and in practice that includes
+    # C:\ProgramData\OEMUpdates, not just the folders Dell lists. C:\ProgramData\Dell is the one ProgramData
+    # path Dell says is fine, so DCU writes its report there and it's copied back into $reportDir.
+    # No -outputLog: Invoke-Native already keeps DCU's console output in $log.
+    $dcuDir = Join-Path $env:ProgramData "Dell\OEMUpdates\Dell_$stamp"
+    New-Item -ItemType Directory -Path $dcuDir -Force | Out-Null
+
     Write-Step 'Scanning with Dell Command | Update'
-    $code = Invoke-Native $dcu @('/scan', "-updateType=$types", "-report=$reportDir", "-outputLog=$reportDir\scan.log") $log
+    $code = Invoke-Native $dcu @('/scan', "-updateType=$types", "-report=$dcuDir") $log
+    if ($code -eq 107) {
+        # Still refused: scan again without a report and read DCU's console output instead (fallback below).
+        Write-Host "    Dell Command | Update won't write its report to $dcuDir - scanning again without one." -ForegroundColor Yellow
+        $code = Invoke-Native $dcu @('/scan', "-updateType=$types") $log
+    }
+    Copy-Item -Path (Join-Path $dcuDir '*') -Destination $reportDir -Recurse -Force -ErrorAction SilentlyContinue
     if ($code -eq 500) { $updates = @() }
     elseif ($code -ne 0) {
         $why = if ($dellCodes.ContainsKey([int]$code)) { $dellCodes[[int]$code] } else { "Unexpected exit code $code - see $log" }
@@ -292,7 +306,7 @@ switch ($vendor) {
     }
 
     $installer = {
-        $args2 = @('/applyUpdates', "-updateType=$types", '-autoSuspendBitLocker=enable', '-reboot=disable', "-outputLog=$reportDir\apply.log")
+        $args2 = @('/applyUpdates', "-updateType=$types", '-autoSuspendBitLocker=enable', '-reboot=disable')
         $c = Invoke-Native $dcu $args2 $log
         switch ($c) {
             0       { [pscustomobject]@{ Code = 0; Message = 'Updates installed.' } }

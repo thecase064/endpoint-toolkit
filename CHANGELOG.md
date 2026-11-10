@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.1 - 2026-11-10
+
+### Fixed
+- **Dell driver updates failed at the scan with exit 107** ("The path provided for option '-report' is a reserved folder that may not be used"). Newer Dell Command | Update refuses some folders for its report and log, and in practice that includes `C:\ProgramData\OEMUpdates`, not just the Windows, Program Files and Users\Public folders Dell documents. DCU now writes its report to `C:\ProgramData\Dell\OEMUpdates\Dell_<time>`, the one ProgramData path Dell says is fine, and the report is copied back into `C:\ProgramData\OEMUpdates` as before, so New device setup's log folder doesn't change. If DCU still refuses it, the scan runs again without a report and the updates are read from DCU's console output. Found on a Latitude 7490.
+- DCU's `-outputLog` is no longer passed to the scan or the install. The toolkit's own log already keeps everything DCU prints, so it was a copy that could be refused the same way.
+- Exit 107 from DCU now has a plain message instead of "Unexpected exit code".
+
 ## 1.8.0 - 2026-11-09
 
 ### Added
