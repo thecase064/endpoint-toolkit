@@ -40,3 +40,7 @@ PC-1234 quick triage - 2 fail, 3 warn: Free space, Blue screens, Pending reboot,
 Read-only, and fine unelevated. Takes 10-30 seconds. It calls the toolkit's [device inventory](../DeviceInventory) and [Entra/Intune health check](../EntraIntuneHealth), so it needs those folders alongside it.
 
 Exit codes: `0` = nothing failed, `1` = at least one FAIL.
+
+## After the work
+
+Run it again once you've made changes, then **Diagnose > Before / after comparison** (`Compare-DeviceReport`) puts this, Performance check and the Wi-Fi and battery reports side by side for the ticket.

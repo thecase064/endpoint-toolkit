@@ -497,6 +497,31 @@
       ]
     },
     {
+      "id": "report-compare",
+      "name": "Before / after comparison",
+      "category": "Diagnose",
+      "icon": "E9D2",
+      "path": "Tools/ReportCompare/Compare-DeviceReport.ps1",
+      "command": "Compare-DeviceReport",
+      "description": "Reads the Quick triage, Performance check, Wi-Fi and battery reports saved for this PC and writes up what changed: fixed, worse, the numbers side by side, what's left and what to look at next.",
+      "brief": [
+        "Before and after on one page. Reads the Quick triage, Performance check, Wi-Fi and battery",
+        "reports already in C:\\Triage for this PC, then shows what got fixed or worse, the numbers",
+        "side by side, what's still to do, and things that only show when the reports are read together.",
+        "Read-only: writes one HTML page next to the reports. Run the checks before and after first."
+      ],
+      "admin": false,
+      "readOnly": true,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Ticket",
+          "type": "string",
+          "prompt": "Ticket number for the report (optional)"
+        }
+      ]
+    },
+    {
       "id": "entra-intune-health",
       "name": "Entra / Intune health check",
       "category": "Diagnose",

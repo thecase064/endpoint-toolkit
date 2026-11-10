@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.9.0 - 2026-11-10
+
+### Added
+- **Before / after comparison** (`Compare-DeviceReport`, Diagnose). Run the checks before and after the work, then this: it reads every Quick triage, Performance check, Wi-Fi and battery report already saved for the PC in `C:\Triage` and writes one page for the ticket:
+  - **What changed:** fails and warnings from the first run to the latest, build changes and restarts in between, and each check that was fixed, is no longer reported, got better, got worse, is new or is unchanged, first and latest detail side by side.
+  - **The numbers** for every run: CPU, disk, memory, paging, start-up times, free space, pending restart, startup apps, drivers and BIOS from Performance check; last update, shutdowns, blue screens, crashes, memory, CPU, join type and Intune from Quick triage. The first and latest five runs when there are more.
+  - **Worth knowing:** notes that only show across the reports, most important first. A first run caught mid-update, a run busy just after start-up, an idle after-run, sign-in getting slower, new startup apps (Edge's Startup boost), classic Teams still starting, slow start-ups left over from updates, space taken by updates, no battery plus unexpected shutdowns, months without updates on a PC that isn't in Intune (naming the RMM agent if there is one), Quick triage older than the work, and LMS.exe crashes.
+  - **Still needs attention:** everything WARN or FAIL in the latest reports, FAILs first, with each fix. Quick triage items a newer Performance check found fine are left out.
+  - **Wi-Fi and battery:** sessions, drops and reasons, network and signal, adapter driver age, how long the adapter took after start-up, DNS servers, saved networks, and whether Location services hid the details; battery capacity and cycles.
+  - Named after the PC (**PC-1234 report**, saved as `Report_<PC>_<time>.html`), with a one-line summary for the ticket, an optional ticket number, and links to every report it read.
+- Read-only. It finds reports by name, so it works on reports made before it existed. Nothing is sent anywhere: the write-up comes from rules in the script.
+
+### Tests
+- Compare-DeviceReport, 75 checks with a harness: five real reports from a Latitude 7490 (before, overnight, after a restart, plus Quick triage and Wi-Fi), and made-up reports for no reports, other PCs only, one run, things getting worse or new, a FAIL turning into a WARN, eight runs, reports older than `-Days`, comma-decimal and dot-thousands numbers, HTML in report text, two checks with the same name, Quick triage pairs, a Wi-Fi report with Location on, a worn battery, stray files and earlier comparisons in the folder, and `-Path`. Six key behaviours were broken on purpose (WARN not counted, stale triage items kept, HTML not escaped, comma decimals misread, notes unranked, every run shown); each was caught.
+
 ## 1.8.1 - 2026-11-10
 
 ### Fixed

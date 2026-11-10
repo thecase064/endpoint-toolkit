@@ -62,3 +62,7 @@ In a remote session or an RMM shell, nobody can answer, so `-Fix` changes nothin
 It calls the toolkit's [device inventory](../DeviceInventory), so it needs that folder alongside it.
 
 Exit codes: `0` = nothing failed, `1` = at least one FAIL.
+
+## After the work
+
+Run it again once you've made changes, then **Diagnose > Before / after comparison** (`Compare-DeviceReport`) puts the runs side by side: what got fixed, the numbers for each run, and what's still to do.
