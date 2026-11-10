@@ -249,6 +249,18 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
 
 The exe is a small stub that runs the one-line launcher, so it never goes stale. Unsigned PS2EXE binaries are a well-known AV false-positive magnet, so sign it (`-CertificateThumbprint`) or stick with `Launch-Toolkit.cmd`.
 
+## Releasing
+
+Bump the version, add a `## x.y.z - date` section to `CHANGELOG.md`, push `main`, wait for CI to go green, then tag and publish:
+
+```powershell
+git tag -a v1.11.0 -m "v1.11.0: What it adds"; git push origin v1.11.0
+.\build\Publish-Releases.ps1 -WhatIf    # what it would publish
+.\build\Publish-Releases.ps1
+```
+
+`Publish-Releases.ps1` creates a GitHub release for every version tag that hasn't got one, with that version's CHANGELOG section as the notes, and marks the newest Latest. It skips tags already released, so it's safe to run again, and never creates or moves a tag. It needs the GitHub CLI (`winget install GitHub.cli`, then `gh auth login`).
+
 ## Tests
 
 ```powershell
