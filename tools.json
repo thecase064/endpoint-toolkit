@@ -433,6 +433,32 @@
       ]
     },
     {
+      "id": "onedrive-reset",
+      "name": "OneDrive reset (sync app)",
+      "category": "Repair",
+      "icon": "E8F7",
+      "path": "Tools/OneDriveReset/Reset-OneDrive.ps1",
+      "command": "Reset-OneDrive",
+      "description": "Microsoft's OneDrive.exe /reset for the signed-in user: finds the right OneDrive.exe, lists accounts and synced libraries, resets, then makes sure OneDrive starts again. Run as the user.",
+      "brief": [
+        "Microsoft's OneDrive reset (OneDrive.exe /reset) for the signed-in user, then starts it again.",
+        "For sync that's stuck, errors that keep coming back, or files that never upload.",
+        "Disconnects every OneDrive account here and re-syncs; no files are deleted.",
+        "Lists accounts and synced libraries first. Run it as the user, not as admin."
+      ],
+      "admin": false,
+      "mode": "child",
+      "confirm": "Signs this user's OneDrive out of every account until it re-syncs. Files stay put.",
+      "prompts": [
+        {
+          "param": "CheckOnly",
+          "type": "switch",
+          "prompt": "Check only (show accounts and synced libraries, change nothing)?",
+          "default": false
+        }
+      ]
+    },
+    {
       "id": "quick-triage",
       "name": "Quick triage (first five minutes)",
       "category": "Diagnose",

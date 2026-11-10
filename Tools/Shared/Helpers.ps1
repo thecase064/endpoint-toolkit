@@ -7,6 +7,8 @@
     Get-OtherSignedInUser   Who is signed in at the console, when that's not the account running this.
                             Per-user fixes (Teams, Outlook, Office sign-in) only touch the account
                             running them, so this lets a tool warn when that's the wrong person.
+    Test-RunningAsAdmin     Whether this is running elevated (or as SYSTEM). For tools whose app
+                            refuses to run with admin rights, such as OneDrive.
 
     Get-GetHelpCmd          Downloads Microsoft's Get Help command line (GetHelpCmd.exe), unpacks it
                             and refuses it unless it's validly signed by Microsoft.
@@ -37,6 +39,16 @@ function Get-OtherSignedInUser {
     }
     catch { Write-Verbose "Couldn't read the signed-in user: $($_.Exception.Message)" }
     $null
+}
+
+function Test-RunningAsAdmin {
+    # True when this process has a full admin token: an elevated window, an admin's remote session
+    # (Enter-PSSession) or SYSTEM (RMM). False for a normal user window, or if it can't be told.
+    try {
+        $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+        ([Security.Principal.WindowsPrincipal]$id).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    }
+    catch { $false }
 }
 
 function Get-GetHelpCmd {

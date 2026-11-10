@@ -2,10 +2,10 @@
 
 [![CI](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml)
 
-A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
+A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, OneDrive, printing, Office activation, Windows Update), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
-┌ Endpoint Toolkit v1.9.0 ────────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+┌ Endpoint Toolkit v1.10.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
 │ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
 │ Build                       │                                                                                  │
 │   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
@@ -34,7 +34,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.9.0                   thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.10.0                  thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -56,21 +56,22 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
     13  Print spooler clear                           admin
     14  Office activation reset                       admin
     15  Teams Meeting add-in fix (classic Outlook)
+    16  OneDrive reset (sync app)
 
    DIAGNOSE
-    16  Quick triage (first five minutes)
-    17  Performance check (slow PC)
-    18  Before / after comparison
-    19  Entra / Intune health check
-    20  BitLocker key backup check                    admin
-    21  Device inventory (hardware + OS)
-    22  Disk usage report (HTML)
-    23  Disk usage browser (GUI)                      window
-    24  Event triage (GUI)                            window
+    17  Quick triage (first five minutes)
+    18  Performance check (slow PC)
+    19  Before / after comparison
+    20  Entra / Intune health check
+    21  BitLocker key backup check                    admin
+    22  Device inventory (hardware + OS)
+    23  Disk usage report (HTML)
+    24  Disk usage browser (GUI)                      window
+    25  Event triage (GUI)                            window
 
    REPORT
-    25  M365 licence report (Excel)
-    26  Exchange + Planner usage report
+    26  M365 licence report (Excel)
+    27  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -110,7 +111,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.9.0` (add `-Console` for the console menu) |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.10.0` (add `-Console` for the console menu) |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |
@@ -133,6 +134,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 | | [Print spooler clear](Tools/PrintSpooler) | Stops the spooler (ending it if it's wedged), deletes stuck jobs (`.SPL`/`.SHD` files only) and starts it again with its dependants. | `Clear-PrintSpooler` |
 | | [Office activation reset](Tools/OfficeActivation) | Microsoft's Get Help `ResetOfficeActivation`: clears Office licences and cached sign-ins so the user can activate fresh. Downloaded each run and checked for Microsoft's signature. | `Reset-OfficeActivation` |
 | | [Teams Meeting add-in fix](Tools/TeamsAddin) | The missing Teams Meeting button in classic Outlook: checks the add-in is installed and registered, fixes LoadBehavior and Outlook's disabled and do-not-disable lists, and gives Microsoft's reinstall steps for the rest. | `Repair-TeamsMeetingAddin` |
+| | [OneDrive reset](Tools/OneDriveReset) | Microsoft's `OneDrive.exe /reset` without hunting for the exe: finds the copy that's running or registered (per-user or Program Files), lists the accounts and synced libraries first, resets, then makes sure OneDrive starts again. No files are deleted. Runs as the user and refuses to run as admin, which OneDrive won't start under. `-CheckOnly` changes nothing. | `Reset-OneDrive` |
 | **Diagnose** | [Quick triage](Tools/QuickTriage) | The first five minutes of any ticket on one page: device, uptime, pending reboot, disk space and health, crashes, updates, antivirus, Entra/Intune, memory and network. Problems first, each with a next step, plus a one-line summary for the ticket. `-Reports` adds Windows' own Wi-Fi and battery reports. | `Invoke-QuickTriage` |
 | | [Performance check](Tools/PerformanceCheck) | "Why is it slow?" Measures CPU, disk and memory for 30 seconds while the user does what's slow, names the apps responsible (grouped, with advice for Teams, Defender scans, indexing, OneDrive, browsers and more), and checks power plan and mode, CPU held below its normal speed, startup apps, start-up time, hangs, low-memory warnings, SSD or hard drive, RAM size and sticks, BIOS and graphics driver age. Read-only; `-Fix` offers only undoable fixes (power plan, maximum processor state, startup apps the Task Manager way), one question at a time, and never touches security, remote support, VPN or driver helpers. | `Invoke-PerformanceCheck` |
 | | [Before / after comparison](Tools/ReportCompare) | The write-up for the ticket once the work's done. Reads every Quick triage, Performance check, Wi-Fi and battery report already saved for the PC and puts them side by side: what got fixed, better, worse or is new, the numbers for every run (CPU, disk, memory, paging, start-up times, free space, build, drivers, last update, shutdowns), what's still to do with each fix, and notes that only show across the reports, like a first run caught mid-update, no battery plus unexpected shutdowns, or updates nothing manages. Works on reports made before it existed. Read-only, and nothing is sent anywhere. | `Compare-DeviceReport` |

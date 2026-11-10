@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.10.0 - 2026-11-10
+
+### Added
+- **OneDrive reset** (`Reset-OneDrive`, Repair). Microsoft's `OneDrive.exe /reset` for the signed-in user, without trying each path by hand:
+  - **Finds the right OneDrive.exe:** the copy that's running, then the one registered for the user, then Microsoft's three paths (per-user `%LOCALAPPDATA%`, `Program Files`, `Program Files (x86)`).
+  - **Shows what's connected first:** version, per-user or per-machine, the work and personal accounts with their folders, SharePoint / Teams libraries synced outside the OneDrive folder, and the policies that matter afterwards (silent sign-in, known folders moved to OneDrive, libraries added by policy).
+  - **Resets it, then checks:** the old OneDrive closed, and OneDrive started again within 2 minutes. If it doesn't come back by itself, the tool starts it.
+  - **Says what's left:** who signs in again, "Use this folder", choose folders, and which libraries to sync again.
+  - No files are deleted. `-CheckOnly` shows everything and changes nothing.
+- It runs as the user and stops if it's elevated (an admin window, an admin's remote session or SYSTEM), because OneDrive won't start with full admin rights. It also stops if someone else is signed in at the PC, unless `-Force`. On a terminal server only this user's OneDrive is touched.
+- `Test-RunningAsAdmin` in the shared helpers.
+
+### Tests
+- Reset-OneDrive, 61 checks with a harness faking processes, the registry, Windows paths and the shared helpers:
+  - A normal reset; check only; elevated, with and without `-Force`; someone else signed in, with and without `-Force`; not installed.
+  - Picking the exe: running beats registered beats default, a quoted registered path, a registered value that isn't OneDrive.exe, only the x86 copy, another session's OneDrive ignored and left running.
+  - After the reset: comes back by itself, doesn't (started by the tool, start fails, start throws), the reset process carries on running, the old OneDrive won't close, the reset won't start, `-WaitSeconds`.
+  - Accounts and policies: none, a leftover key, an account with no address, policies on and off (including per-user auto-mount), libraries de-duplicated across both registry lists, shortcuts inside OneDrive left out, non-path values ignored, long lists cut at 15.
+  - Six key behaviours were broken on purpose (elevated guard, shortcut filter, starting it twice, session filter, old-instance check, running copy first); each was caught.
+
 ## 1.9.0 - 2026-11-10
 
 ### Added
