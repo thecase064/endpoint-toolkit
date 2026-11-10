@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.1 - 2026-11-10
+
+### Fixed
+- **OneDrive reset listed an account that wasn't there.** OneDrive can leave a `Personal` key under `HKCU\Software\Microsoft\OneDrive\Accounts` holding only a placeholder folder (`%UserProfile%\OneDrive`) and no address. The tool showed it as `Personal (no address recorded)` and would have told the tech to sign it back in. A key now only counts as a signed-in account when it has an email address. Found by running `-CheckOnly` on a real Entra-joined laptop; the exe, work account, synced library and policies it found there were all right.
+
+### Tests
+- Reset-OneDrive harness, 63 checks: the laptop's exact `Personal` key, that it stays out of the sign-in advice, and keys with folders but no addresses (no accounts, so no libraries). Putting the old rule back fails two of them.
+
 ## 1.10.0 - 2026-11-10
 
 ### Added

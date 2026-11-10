@@ -165,7 +165,9 @@ foreach ($name in (Get-RegSubKeyName -Path $accountsKey | Sort-Object)) {
     $key    = "$accountsKey\$name"
     $email  = [string](Get-RegValue -Path $key -Name 'UserEmail')
     $folder = [string](Get-RegValue -Path $key -Name 'UserFolder')
-    if (-not $email -and -not $folder) { continue }    # a leftover key with no account in it
+    # No address means nobody is signed in there. OneDrive can leave a Personal key holding only a
+    # placeholder folder ("%UserProfile%\OneDrive"), so a folder alone doesn't make it an account.
+    if (-not $email) { continue }
     $type = if ($name -like 'Business*') { 'Work' } elseif ($name -eq 'Personal') { 'Personal' } else { $name }
     $accounts.Add([pscustomobject]@{ Type = $type; Email = $email; Folder = $folder })
 
@@ -188,8 +190,7 @@ foreach ($name in (Get-RegSubKeyName -Path $accountsKey | Sort-Object)) {
 if ($accounts.Count) {
     Write-Host '    Accounts signed in:'
     foreach ($a in $accounts) {
-        $who = if ($a.Email) { $a.Email } else { '(no address recorded)' }
-        Write-Host ("      {0,-9} {1}{2}" -f $a.Type, $who, $(if ($a.Folder) { " -> $($a.Folder)" }))
+        Write-Host ("      {0,-9} {1}{2}" -f $a.Type, $a.Email, $(if ($a.Folder) { " -> $($a.Folder)" }))
     }
 }
 else { Write-Host '    Accounts signed in: none' }
