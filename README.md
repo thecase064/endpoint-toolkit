@@ -240,6 +240,7 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
   | Intune primary user (and New device setup when setting one) | Microsoft's `Microsoft.Graph.Authentication` module from the **PowerShell Gallery**, if it isn't installed | Every DLL must be validly signed, and the module's own by Microsoft, or it's deleted and not loaded. Cached in `ProgramData\EndpointToolkit\_modules`; New device setup deletes it at the end |
   | Chrome + Adobe Reader | Installers straight from Google's and Adobe's download servers (HTTPS) | Must be validly signed by Google LLC / Adobe Inc., or it's deleted and not installed |
   | M365 licence report | Microsoft Graph and ImportExcel modules from the PowerShell Gallery | Only with `-InstallMissingModules` |
+- **Where everything goes.** [docs/data-flow.md](docs/data-flow.md) has a diagram for every tool: what it reads on the PC, what it downloads or signs into, what it runs and where it saves. It ends with a list of every folder the toolkit writes to.
 
 ## Building an .exe (optional)
 
