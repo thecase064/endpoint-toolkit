@@ -4,6 +4,9 @@
 
 .DESCRIPTION
     Get-CurrentUserName     The account running this script (DOMAIN\user or AzureAD\user).
+    Get-CurrentUserSid      Its SID (S-1-5-18 for SYSTEM).
+    Resolve-AccountSid      DOMAIN\name for a SID, or nothing when Windows can't name it (a deleted
+                            account, no domain controller in reach, an Entra account not cached here).
     Get-OtherSignedInUser   Who is signed in at the console, when that's not the account running this.
                             Per-user fixes (Teams, Outlook, Office sign-in) only touch the account
                             running them, so this lets a tool warn when that's the wrong person.
@@ -27,6 +30,16 @@
 function Get-CurrentUserName {
     try { [Security.Principal.WindowsIdentity]::GetCurrent().Name }
     catch { if ($env:USERDOMAIN) { "$env:USERDOMAIN\$env:USERNAME" } else { [string]$env:USERNAME } }
+}
+
+function Get-CurrentUserSid {
+    try { [Security.Principal.WindowsIdentity]::GetCurrent().User.Value } catch { $null }
+}
+
+function Resolve-AccountSid {
+    param([string] $Sid)
+    try { ([Security.Principal.SecurityIdentifier]::new($Sid)).Translate([Security.Principal.NTAccount]).Value }
+    catch { $null }
 }
 
 function Get-OtherSignedInUser {

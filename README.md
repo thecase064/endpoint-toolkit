@@ -5,7 +5,7 @@
 A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, OneDrive, printing, Office activation, Windows Update, the clock), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
-┌ Endpoint Toolkit v1.12.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+┌ Endpoint Toolkit v1.13.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
 │ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
 │ Build                       │                                                                                  │
 │   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
@@ -34,7 +34,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.12.0                  thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.13.0                  thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -58,22 +58,23 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
     15  Teams Meeting add-in fix (classic Outlook)
     16  OneDrive reset (sync app)
     17  Time sync fix (clock wrong)                   admin
+    18  Old user profile cleanup                      admin
 
    DIAGNOSE
-    18  Quick triage (first five minutes)
-    19  Performance check (slow PC)
-    20  Before / after comparison
-    21  Entra / Intune health check
-    22  Windows Update status (why no updates?)
-    23  BitLocker key backup check                    admin
-    24  Device inventory (hardware + OS)
-    25  Disk usage report (HTML)
-    26  Disk usage browser (GUI)                      window
-    27  Event triage (GUI)                            window
+    19  Quick triage (first five minutes)
+    20  Performance check (slow PC)
+    21  Before / after comparison
+    22  Entra / Intune health check
+    23  Windows Update status (why no updates?)
+    24  BitLocker key backup check                    admin
+    25  Device inventory (hardware + OS)
+    26  Disk usage report (HTML)
+    27  Disk usage browser (GUI)                      window
+    28  Event triage (GUI)                            window
 
    REPORT
-    28  M365 licence report (Excel)
-    29  Exchange + Planner usage report
+    29  M365 licence report (Excel)
+    30  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -113,7 +114,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.12.0` (add `-Console` for the console menu) |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.13.0` (add `-Console` for the console menu) |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |
@@ -138,6 +139,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 | | [Teams Meeting add-in fix](Tools/TeamsAddin) | The missing Teams Meeting button in classic Outlook: checks the add-in is installed and registered, fixes LoadBehavior and Outlook's disabled and do-not-disable lists, and gives Microsoft's reinstall steps for the rest. | `Repair-TeamsMeetingAddin` |
 | | [OneDrive reset](Tools/OneDriveReset) | Microsoft's `OneDrive.exe /reset` without hunting for the exe: finds the copy that's running or registered (per-user or Program Files), lists the accounts and synced libraries first, resets, then makes sure OneDrive starts again. No files are deleted. Runs as the user and refuses to run as admin, which OneDrive won't start under. `-CheckOnly` changes nothing. | `Reset-OneDrive` |
 | | [Time sync fix](Tools/TimeSync) | The clock's wrong, or sign-ins fail on time. Checks where the PC gets its time (domain or time server), automatic time, Group Policy, the Windows Time service, the last good sync, "can't reach the time source" events, how far out the clock is against its own time server, the largest jump Windows will make by itself, and the time zone. Then turns the time service and automatic time back on if they're off, resyncs and measures again. Changes the time server only with `-SetPeer`, never on domain PCs; domain controllers are only reported on; every change prints its undo. `-CheckOnly` changes nothing. | `Repair-TimeSync` |
+| | [Old user profile cleanup](Tools/ProfileCleanup) | Frees space from old user profiles. Lists every profile by when it was really last used (the sign-in and sign-out times Windows records, not `LastUseTime`, which antivirus keeps bumping), its size (cloud-only OneDrive files don't count), files left in Desktop / Documents / Downloads outside OneDrive, and whether the account still exists. Also reports left-over profile folders and `.bak` (temporary profile) entries. Read-only unless `-Remove`: you pick which (numbers or `all`), confirm, and it deletes through Windows' own profile API, then checks each has gone. Never offers profiles in use, system accounts or the built-in Administrator. `-Yes` for RMM. | `Remove-StaleProfile` |
 | **Diagnose** | [Quick triage](Tools/QuickTriage) | The first five minutes of any ticket on one page: device, uptime, pending reboot, disk space and health, crashes, updates, antivirus, Entra/Intune, memory and network. Problems first, each with a next step, plus a one-line summary for the ticket. `-Reports` adds Windows' own Wi-Fi and battery reports. | `Invoke-QuickTriage` |
 | | [Performance check](Tools/PerformanceCheck) | "Why is it slow?" Measures CPU, disk and memory for 30 seconds while the user does what's slow, names the apps responsible (grouped, with advice for Teams, Defender scans, indexing, OneDrive, browsers and more), and checks power plan and mode, CPU held below its normal speed, startup apps, start-up time, hangs, low-memory warnings, SSD or hard drive, RAM size and sticks, BIOS and graphics driver age. Read-only; `-Fix` offers only undoable fixes (power plan, maximum processor state, startup apps the Task Manager way), one question at a time, and never touches security, remote support, VPN or driver helpers. | `Invoke-PerformanceCheck` |
 | | [Before / after comparison](Tools/ReportCompare) | The write-up for the ticket once the work's done. Reads every Quick triage, Performance check, Wi-Fi and battery report already saved for the PC and puts them side by side: what got fixed, better, worse or is new, the numbers for every run (CPU, disk, memory, paging, start-up times, free space, build, drivers, last update, shutdowns), what's still to do with each fix, and notes that only show across the reports, like a first run caught mid-update, no battery plus unexpected shutdowns, or updates nothing manages. Works on reports made before it existed. Read-only, and nothing is sent anywhere. | `Compare-DeviceReport` |
@@ -168,6 +170,7 @@ Compare-DeviceReport -Ticket 123456
 Get-EntraIntuneHealth -Sync
 Get-WindowsUpdateStatus -Html -Watch
 Repair-TimeSync -CheckOnly
+Remove-StaleProfile -Remove -OlderThanDays 180
 Get-DeviceInventory -Html
 Get-DiskUsageReport -Path D:\ -TopFolders 50 -PassThru
 Get-M365LicenseReport -TenantId contoso.onmicrosoft.com -ClientName 'Contoso' -IncludeLastSignIn

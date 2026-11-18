@@ -490,6 +490,50 @@
       ]
     },
     {
+      "id": "profile-cleanup",
+      "name": "Old user profile cleanup",
+      "category": "Repair",
+      "icon": "E7EE",
+      "path": "Tools/ProfileCleanup/Remove-StaleProfile.ps1",
+      "command": "Remove-StaleProfile",
+      "description": "Frees space from old user profiles: lists every profile by when it was really last used (the sign-in and sign-out times Windows records, not LastUseTime), its size and the files it holds outside OneDrive, and whether the account still exists. With -Remove you pick which to delete and confirm; deletes through Windows' own profile API and checks each one has gone. Never offers profiles in use, system accounts or the built-in Administrator.",
+      "brief": [
+        "Frees space from old user profiles: lists each one by when it was really last used (not the",
+        "date antivirus keeps bumping), its size and the files it holds outside OneDrive.",
+        "Read-only unless you say yes: then you pick which to delete, confirm, and it checks each went.",
+        "Never touches profiles in use, system accounts or the built-in Administrator."
+      ],
+      "admin": true,
+      "readOnly": "default",
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Remove",
+          "type": "switch",
+          "prompt": "Delete old profiles? You pick which, then confirm",
+          "default": false
+        },
+        {
+          "param": "OlderThanDays",
+          "type": "choice",
+          "prompt": "Old means not used for (days)",
+          "options": [
+            "90",
+            "180",
+            "365",
+            "60",
+            "30"
+          ],
+          "default": "90"
+        },
+        {
+          "param": "User",
+          "type": "string",
+          "prompt": "Only these profiles: folder or account name (blank = all old ones)"
+        }
+      ]
+    },
+    {
       "id": "quick-triage",
       "name": "Quick triage (first five minutes)",
       "category": "Diagnose",

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.13.0 - 2026-11-18
+
+### Added
+- **Old user profile cleanup** (`Remove-StaleProfile`, Repair, admin). For shared PCs, hand-me-down laptops and "the C drive is full" when `C:\Users` holds people who left months ago. Read-only unless `-Remove`.
+  - **List:** every user profile, oldest first. **Last used** comes from the sign-in / sign-out times Windows records per profile (`ProfileList\<SID>` `LocalProfileLoadTime` / `LocalProfileUnloadTime`, what Windows' own "delete profiles older than" policy uses since 1809), not `LastUseTime` or `NTUSER.DAT`, which antivirus and updates keep bumping. `NTUSER.DAT` is only the fallback. **Size** leaves out cloud-only OneDrive files and doesn't follow junctions. **Files in Desktop / Documents / Pictures / Videos / Music / Downloads** that aren't in OneDrive are flagged, because they go with the profile. Says whether the account still exists or is disabled. Entra accounts are named from Windows' own cache and never called deleted just because Windows can't name them offline. Domain accounts it can't look up say "deleted, or no domain controller in reach".
+  - **Also reports, never changes:** folders in the profiles folder with no profile entry, `.bak` entries (the "temporary profile" problem, with the fix by hand) and the delete-old-profiles policy.
+  - **Delete (`-Remove`):** pick by number (`1,3`, `2-4`), `all`, or Enter for none, then confirm with the count, size and names. Anything it doesn't understand deletes nothing. Deletes through `Win32_UserProfile` (folder and registry entry together), re-checking each profile isn't signed in first, then checks it has gone and shows the space that came back. A folder left behind (files in use) is a FAILED with what to do.
+  - **Never offered:** profiles in use, system and service accounts, the built-in Administrator, the account running it, profiles outside the profiles folder, `-Exclude`. **Only if picked by number** (never by `all` or `-Yes`): no last-used date, the account that set the PC up (Entra join), the last person to sign in.
+  - `-OlderThanDays` (default 90, at least 30), `-User` (one person's profile, any age), `-Yes` (RMM), `-SkipSize`, `-Quiet`. Exit 1 when a deletion fails, `-Remove` without admin, or `-User` matches nothing.
+- Shared helpers: `Get-CurrentUserSid`, `Resolve-AccountSid`.
+
+### Tests
+- Remove-StaleProfile, 81 checks with a harness faking the registry, CIM (profiles, local accounts, disks), SID lookups, prompts and the clock; profile folders are real files, so sizes, symlinks and `NTUSER.DAT` dates are measured for real. Covered: the list (ages, sources, accounts, sizes, local files, kept reasons, order, notes, summary, ASCII); `-OlderThanDays`, `-SkipSize`, `-Quiet`, `-Exclude`, the account running it, an unreadable profile list; uncached Entra accounts, disabled and deleted local accounts, crash (sign-in after sign-out), zero and future times, a low DWORD read back negative, an entry with no folder; Entra join and last-signed-in protection; interactive picks (none, numbers, ranges, all, seven bad selections, confirm yes / no / blank); unelevated; `-Yes`; `-User` (any age, by address, can't reach kept profiles, no match); a delete that throws, a folder left behind, signed in or gone between list and delete, no disk figures; the cloud-only attribute logic.
+- Run under UTC, New York and Tokyo time. Twenty key behaviours were broken on purpose (each kept rule, the delete-time re-check, `all` / `-Yes` protection, DWORD masking, sign-in vs sign-out, future times, cloud-only files, links, bad selections, the confirm, Entra naming, left-behind folders, exit codes, admin, `desktop.ini`); each was caught. It also found the free-space line printing "C::".
+
 ## 1.12.0 - 2026-11-18
 
 ### Added

@@ -2,7 +2,7 @@
 
 Reports save to the PC. Only three tools sign into Microsoft 365: Intune primary user (also run by New device setup), M365 licence report, and Exchange + Planner usage.
 
-For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.12.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
+For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.13.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
 
 ```mermaid
 flowchart LR
@@ -132,6 +132,9 @@ flowchart LR
     R8N["<b>Online (no sign-in)</b><br/>NTP (UDP 123) to the PC's own time source or<br/>-Reference (default time.windows.com)"]:::net <--> R8T
     R8L["W32Time registry (Parameters, Config, policy),<br/>w32tm /query, Time-Service events, time zone<br/>Fix: W32Time start type + start, w32tm /config<br/>(automatic time / -SetPeer), w32tm /resync"]:::local <--> R8T
     R8T --> R8O["Console only"]:::out
+    R9T("<b>Old user profile cleanup</b><br/>Admin. Lists, deletes only with -Remove<br/>after you pick and confirm"):::tool
+    R9L["ProfileList (sign-in / sign-out times, .bak),<br/>Win32_UserProfile, local accounts, IdentityStore<br/>cache, Entra JoinInfo, LogonUI, profile folders<br/>Delete: Remove-CimInstance Win32_UserProfile"]:::local <--> R9T
+    R9T --> R9O["Console only"]:::out
 ```
 
 ## Diagnose
@@ -223,6 +226,6 @@ flowchart LR
 | `Documents\M365Reports\` | M365 licence report, Exchange + Planner usage |
 | `%APPDATA%\EventTriage\` | Event triage (mutes) |
 | `%TEMP%` | Window run options, Chrome + Reader downloads, Driver import unzip |
-| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, BitLocker check, Driver import |
+| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, Old user profile cleanup, BitLocker check, Driver import |
 
 `Documents` is the Documents folder of the account running the tool, which follows OneDrive redirection.
