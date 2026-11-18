@@ -495,13 +495,22 @@ if (Test-Path -LiteralPath $localFile) {
         ForEach-Object { $patterns += @{ Name = "local pattern"; Regex = $_ } }
     Write-Host "  (including $((Get-Content $localFile | Where-Object { $_ -and $_ -notmatch '^\s*#' }).Count) private patterns from leak-patterns.local.txt)" -ForegroundColor DarkGray
 }
-# Known-safe hits: the module's own GUID, Adobe's public CDN key for Reader version lookups, and
-# Windows' own built-in power plan / power mode GUIDs (the same on every PC; Performance check).
+# Known-safe hits: the module's own GUID, Adobe's public CDN key for Reader version lookups,
+# Windows' own built-in power plan / power mode GUIDs (the same on every PC; Performance check), and
+# Windows' public audio IDs: Core Audio COM classes / interfaces, endpoint property keys and the
+# sound device class (Audio check).
 $allow = @([regex]::Escape($psd1.GUID), 'api_key=dc-get-adobereader-cdn',
     'a1841308-3541-4fab-bc81-f71556f20b4a',   # Power saver plan
     '961cc777-2547-4f9d-8174-7d86181b8a7a',   # power mode: Best power efficiency
     '3af9b8d9-7c97-431d-ad78-34a8bfea439f',   # power mode: Better performance
-    'ded574b5-45a0-4f42-8737-46345c09c238')   # power mode: Best performance
+    'ded574b5-45a0-4f42-8737-46345c09c238',   # power mode: Best performance
+    'a45c254e-df1c-4efd-8020-67d146a850e0',   # PKEY_Device_DeviceDesc (audio endpoint name)
+    'b3f8fa53-0004-438e-9003-51a46e139bfc',   # audio endpoint property set (adapter name)
+    '4d36e96c-e325-11ce-bfc1-08002be10318',   # device class: Sound, video and game controllers
+    'BCDE0395-E52F-467C-8E3D-C4579291692E',   # MMDeviceEnumerator (Core Audio)
+    'A95664D2-9614-4F35-A746-DE8DB63617E6',   # IMMDeviceEnumerator
+    'D666063F-1587-4E43-81F1-B948E807363F',   # IMMDevice
+    '5CDF2C82-841E-4546-9722-0CF74078229A')   # IAudioEndpointVolume
 
 $files = Get-ChildItem -LiteralPath $root -Recurse -File -Force |
     Where-Object { $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' -and $_.Name -ne 'leak-patterns.local.txt' -and $_.Name -ne 'Test-Repo.ps1' }

@@ -686,6 +686,23 @@
       ]
     },
     {
+      "id": "audio-check",
+      "name": "Audio check (no sound / mic)",
+      "category": "Diagnose",
+      "icon": "E767",
+      "path": "Tools/AudioCheck/Get-AudioStatus.ps1",
+      "command": "Get-AudioStatus",
+      "description": "No sound, or the mic doesn't work: checks the Windows Audio services, the playback and recording devices (which is the default, volume, mute, disabled, unplugged, calls on a different device, Bluetooth hands-free mode), microphone privacy for the PC, the signed-in user, desktop apps and new Teams (and policy), and the sound hardware in Device Manager with driver versions. Read-only; every problem says what to change.",
+      "brief": [
+        "No sound, or the mic doesn't work: checks the audio services, the default speakers and mic",
+        "(volume, mute, disabled, unplugged), microphone privacy for the PC, the user, desktop apps",
+        "and new Teams, and the sound hardware in Device Manager. Read-only: says what to change."
+      ],
+      "admin": false,
+      "readOnly": true,
+      "mode": "child"
+    },
+    {
       "id": "bitlocker-backup",
       "name": "BitLocker key backup check",
       "category": "Diagnose",

@@ -2,7 +2,7 @@
 
 Reports save to the PC. Only three tools sign into Microsoft 365: Intune primary user (also run by New device setup), M365 licence report, and Exchange + Planner usage.
 
-For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.13.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
+For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.14.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
 
 ```mermaid
 flowchart LR
@@ -165,6 +165,9 @@ flowchart LR
     D10N["<b>Online (no sign-in, only with WSUS)</b><br/>TCP connect to the WSUS server named in this<br/>PC's own policy (-SkipNetwork skips it)"]:::net --> D10T
     D10L["Windows Update agent (history, last scan), Get-HotFix,<br/>WindowsUpdateClient events, update policies (GPO,<br/>PolicyManager, Settings pause), service start types,<br/>readiness markers (AppCompatFlags), Setup's CompatData +<br/>SetupDiag results, servicing processes, setupact.log"]:::local --> D10T
     D10T --> D10O["C:\Triage\Updates_#lt;PC#gt;_#lt;time#gt;.html"]:::out
+    D11T("<b>Audio check</b><br/>Read-only. No sound / mic:<br/>devices, privacy, hardware"):::tool
+    D11L["MMDevices endpoints (state, names), Core Audio<br/>(defaults, volume, mute), Audio services,<br/>microphone ConsentStore (PC, signed-in user,<br/>AppPrivacy policy), Device Manager + drivers"]:::local --> D11T
+    D11T --> D11O["Console only"]:::out
     D5T("<b>BitLocker key backup check</b><br/>Admin, read-only by default. Never<br/>shows the keys"):::tool
     D5N["<b>Online (no sign-in)</b><br/>-Fix backs keys up to Entra with the device's<br/>own join (BackupToAAD-BitLockerKeyProtector)"]:::net <--> D5T
     D5L["dsregcmd (Entra joined?)<br/>BitLocker management log, events 845 / 846<br/>Get-BitLockerVolume"]:::local --> D5T
@@ -226,6 +229,6 @@ flowchart LR
 | `Documents\M365Reports\` | M365 licence report, Exchange + Planner usage |
 | `%APPDATA%\EventTriage\` | Event triage (mutes) |
 | `%TEMP%` | Window run options, Chrome + Reader downloads, Driver import unzip |
-| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, Old user profile cleanup, BitLocker check, Driver import |
+| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, Old user profile cleanup, Audio check, BitLocker check, Driver import |
 
 `Documents` is the Documents folder of the account running the tool, which follows OneDrive redirection.

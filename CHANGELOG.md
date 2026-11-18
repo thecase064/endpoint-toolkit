@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.14.0 - 2026-11-18
+
+### Added
+- **Audio check** (`Get-AudioStatus`, Diagnose, read-only, no admin). For "there's no sound" and "my mic doesn't work in Teams":
+  - **Services:** Windows Audio and Windows Audio Endpoint Builder missing, disabled or stopped (with the commands to fix).
+  - **Playback and recording:** every endpoint with its state (active, disabled in Sound settings, unplugged; "not present" ones counted). **Which device is the default, its volume and mute**, from Windows' own Core Audio API compiled in at run time. Default muted or at 0% is a FAIL, under 10% (speakers) / 20% (mic) a WARN. No working output is a FAIL, no working mic a WARN, each saying which ones are disabled or unplugged and how to get them back. Calls going to a different device, and a Bluetooth headset stuck in hands-free mode, are noted. If Core Audio can't be used (Constrained Language Mode, antivirus), the rest still runs and says so.
+  - **Microphone privacy:** off for the whole PC, for the signed-in user, for desktop apps (classic Teams, Zoom, browsers) or for new Teams; the app-privacy policy (force deny, or Teams on the deny list); other apps blocked. Read for **whoever is signed in**, even when it runs elevated as an admin account or as SYSTEM from the RMM.
+  - **Sound hardware:** Device Manager problem codes in plain words (disabled = WARN; no driver, won't start and the rest = FAIL with what to do; "not connected" Bluetooth ignored), driver version / date / provider, and Windows' generic High Definition Audio driver standing in for the manufacturer's.
+  - `-Quiet` one line (`output: Speakers (Realtek(R) Audio) 45%; mic: ... muted`), `-PassThru`, exit 1 on a FAIL.
+
+### Tests
+- Get-AudioStatus, 67 checks with a harness faking the registry (machine, current user and other users' hives), services, Device Manager, drivers and the Core Audio reader. Covered: healthy; muted / 0% / low output and mic; rounding; volume unreadable; default IDs in either case; no defaults; calls on another device (and muted); Bluetooth hands-free; no output (disabled, unplugged, nothing at all); no mic; Core Audio failing; each service stopped / disabled / missing; every privacy setting, the policy and its deny list; an admin or SYSTEM running it with someone else signed in, their registry not loaded, nobody signed in; problem codes 22 / 28 / 10 / unknown / 45; no hardware; Device Manager unreadable; the generic driver; names from Device Manager, the registry or neither.
+- A second run without the fake checks the real Core Audio C# compiles, fails cleanly where it can't run, and is reused on a second run in the same session.
+- Run under UTC, New York and Tokyo time. Twenty-two key behaviours were broken on purpose; each was caught. Breaking them showed the case-insensitive default-device match wasn't really being tested (an all-digit GUID); fixed.
+- Repo leak scan: Windows' public audio IDs (Core Audio classes and interfaces, endpoint property keys, the sound device class) added to the known-safe list, each named.
+
 ## 1.13.0 - 2026-11-18
 
 ### Added
