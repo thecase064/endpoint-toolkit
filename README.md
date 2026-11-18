@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/thecase064/endpoint-toolkit/actions/workflows/ci.yml)
 
-A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, OneDrive, printing, Office activation, Windows Update, the clock), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
+A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, OneDrive, printing, Office activation, Windows Update, the clock, old profiles), diagnose it (why it's slow, why it isn't updating, no sound, what an error code means, Entra, Intune and BitLocker health), find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
 ┌ Endpoint Toolkit v1.16.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
@@ -255,6 +255,7 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
   | Intune primary user (and New device setup when setting one) | Microsoft's `Microsoft.Graph.Authentication` module from the **PowerShell Gallery**, if it isn't installed | Every DLL must be validly signed, and the module's own by Microsoft, or it's deleted and not loaded. Cached in `ProgramData\EndpointToolkit\_modules`; New device setup deletes it at the end |
   | Chrome + Adobe Reader | Installers straight from Google's and Adobe's download servers (HTTPS) | Must be validly signed by Google LLC / Adobe Inc., or it's deleted and not installed |
   | M365 licence report | Microsoft Graph and ImportExcel modules from the PowerShell Gallery | Only with `-InstallMissingModules` |
+  | M365 licence report, Exchange + Planner usage | Microsoft's list of licence product names (a CSV) from download.microsoft.com, at most once a week, saved to `%LOCALAPPDATA%\EndpointToolkit\` | Data only, never run. Must read as Microsoft's list (its columns, at least 50 names, under 20 MB) or it's thrown away and the saved copy is used. `-SkipNameDownload` skips it |
 - **Where everything goes.** [docs/data-flow.md](docs/data-flow.md) has a diagram for every tool: what it reads on the PC, what it downloads or signs into, what it runs and where it saves. It ends with a list of every folder the toolkit writes to.
 
 ## Building an .exe (optional)
