@@ -579,6 +579,38 @@
       ]
     },
     {
+      "id": "windows-update-status",
+      "name": "Windows Update status (why no updates?)",
+      "category": "Diagnose",
+      "icon": "E81C",
+      "path": "Tools/WindowsUpdateStatus/Get-WindowsUpdateStatus.ps1",
+      "command": "Get-WindowsUpdateStatus",
+      "description": "Why isn't it updating? Version and end of support, last patch and scan, failed updates with each error explained, who manages updates (Intune, GPO, WSUS, RMM), pauses and pins, disabled update services, disk space, and Windows 11 / feature update blocks and safeguard holds. Can then watch update activity live.",
+      "brief": [
+        "Why isn't this PC updating? Version and end of support, last patch and last scan, failed",
+        "updates with each error explained, who manages updates (Intune, GPO, WSUS, RMM), pauses and",
+        "version pins, disabled update services, disk space, and Windows 11 / feature update blocks.",
+        "Read-only. Run as admin to read Setup's compatibility report. Can watch activity live after."
+      ],
+      "admin": false,
+      "readOnly": true,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Html",
+          "type": "switch",
+          "prompt": "Write the one-page HTML report too?",
+          "default": true
+        },
+        {
+          "param": "Watch",
+          "type": "switch",
+          "prompt": "Then watch update activity for 30 minutes (Ctrl+C stops)?",
+          "default": false
+        }
+      ]
+    },
+    {
       "id": "bitlocker-backup",
       "name": "BitLocker key backup check",
       "category": "Diagnose",

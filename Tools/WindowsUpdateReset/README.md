@@ -10,6 +10,8 @@ The classic fix for updates stuck downloading, failing with the same error every
 
 The update history list in Settings starts empty afterwards. The updates themselves stay installed.
 
+**Not sure a reset is the fix?** Run **Diagnose > Windows Update status** first (and save its HTML report: the history it reads is what this reset clears). It names the failing updates and explains their error codes. It also catches the things a reset won't fix: an out-of-support version, a pause or version pin in policy, a dead WSUS server, disabled update services or a safeguard hold.
+
 ## Run
 
 - Menu: **Repair > Windows Update reset**

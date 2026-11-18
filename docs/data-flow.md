@@ -2,7 +2,7 @@
 
 Reports save to the PC. Only three tools sign into Microsoft 365: Intune primary user (also run by New device setup), M365 licence report, and Exchange + Planner usage.
 
-For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.10.1. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
+For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.11.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
 
 ```mermaid
 flowchart LR
@@ -154,6 +154,10 @@ flowchart LR
     D4N["<b>Online (no sign-in)</b><br/>Port 443: login.microsoftonline.com,<br/>enterpriseregistration.windows.net,<br/>enrollment.manage.microsoft.com<br/>-Sync: the device checks in with Intune"]:::net <--> D4T
     D4L["dsregcmd /status, HKLM Enrollments,<br/>EnterpriseMgmt tasks, machine certificates,<br/>IME service + log, event log errors"]:::local --> D4T
     D4T --> D4O["Console only<br/>-CollectLogs:<br/>C:\EntraIntuneHealth\EntraIntune_#lt;PC#gt;_#lt;time#gt;.zip<br/>(dsregcmd, results, IME logs, MDM diagnostics,<br/>.evtx)"]:::out
+    D10T("<b>Windows Update status</b><br/>Read-only. Why it isn't updating;<br/>-Watch follows activity live"):::tool
+    D10N["<b>Online (no sign-in, only with WSUS)</b><br/>TCP connect to the WSUS server named in this<br/>PC's own policy (-SkipNetwork skips it)"]:::net --> D10T
+    D10L["Windows Update agent (history, last scan), Get-HotFix,<br/>WindowsUpdateClient events, update policies (GPO,<br/>PolicyManager, Settings pause), service start types,<br/>readiness markers (AppCompatFlags), Setup's CompatData +<br/>SetupDiag results, servicing processes, setupact.log"]:::local --> D10T
+    D10T --> D10O["C:\Triage\Updates_#lt;PC#gt;_#lt;time#gt;.html"]:::out
     D5T("<b>BitLocker key backup check</b><br/>Admin, read-only by default. Never<br/>shows the keys"):::tool
     D5N["<b>Online (no sign-in)</b><br/>-Fix backs keys up to Entra with the device's<br/>own join (BackupToAAD-BitLockerKeyProtector)"]:::net <--> D5T
     D5L["dsregcmd (Entra joined?)<br/>BitLocker management log, events 845 / 846<br/>Get-BitLockerVolume"]:::local --> D5T
@@ -207,7 +211,7 @@ flowchart LR
 | `C:\ProgramData\OfficeActivationReset\` | Office activation reset |
 | `C:\ProgramData\WindowsUpdateReset\` | Windows Update reset |
 | `C:\OfficeReset\` | M365 Apps reset + reinstall |
-| `C:\Triage\` | Quick triage, Performance check, Before / after comparison |
+| `C:\Triage\` | Quick triage, Performance check, Before / after comparison, Windows Update status |
 | `C:\DeviceInventory\` | Device inventory |
 | `C:\DiskUsageReports\` | Disk usage report |
 | `C:\DriverExport\` | Driver export |

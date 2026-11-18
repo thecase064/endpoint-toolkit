@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.11.0 - 2026-11-18
+
+### Added
+- **Windows Update status** (`Get-WindowsUpdateStatus`, Diagnose). "Why isn't this PC updating?" on one page, problems first, each with what to do. Read-only:
+  - **Support:** Windows version and edition against Microsoft's end-of-updates dates (Home / Pro, Enterprise / Education and LTSC each have their own). Windows 10 past its end but still being patched is flagged as probably ESU. A build newer than the table shows as INFO, not a guess.
+  - **Updates:** the last Windows patch (not the daily Defender definition), the last successful check for updates, and **failed updates** from Windows Update's own history, grouped by KB with the error code explained and a fix. A failure that later installed is left out. Repeated "can't connect to the update service" events. Falls back to the event log when the history can't be read.
+  - **Policy:** who manages updates (Intune / MDM, Group Policy, WSUS, an RMM agent such as Datto RMM or NinjaOne, or nothing, with a note when Intune and an RMM agent can both patch); automatic updates turned off or notify-only; pauses from Intune, Group Policy or Settings (with the 35-day expiry); deferrals; a **version pin**, and a FAIL when it pins an out-of-support version; whether the **WSUS server answers**.
+  - **Services:** Windows Update, Update Orchestrator, **Update Medic**, BITS, Windows Modules Installer, Cryptographic Services and Delivery Optimization not disabled, which is what "update blocker" tools change. Read from the registry, so it works unelevated.
+  - **Restart, Disk:** updates waiting for a restart; free space for monthly (10 GB) and feature (20 GB) updates.
+  - **Upgrade:** Windows' own readiness verdict for the next version (Red / Orange / Yellow / Green) with the hardware reason (TPM, Secure Boot, CPU, RAM, drive), **Microsoft safeguard holds**, Windows Setup's compatibility report (apps, hardware and drivers that block it; run as admin), **SetupDiag's** verdict on the last failed upgrade, and Setup files left on the drive. Old reports, and reports from before the current Windows install, drop to INFO.
+  - **Activity:** update and Setup processes running right now.
+  - **`-Watch`** then follows update activity for `-WatchMinutes` (default 30), one plain line whenever something moves: servicing processes starting, finishing or using CPU, Windows Update events (download, install started, installed, failed with the code explained), the Setup log growing, a restart becoming due. Quiet once a minute otherwise. Remote-safe.
+  - HTML report `C:\Triage\Updates_<PC>_<time>.html` with the last dozen history entries and every update policy value found. `-Quiet` + exit code 1 on a FAIL for RMM monitors.
+- Windows Update reset's README now points at the status tool first: a reset clears the history it reads and doesn't fix a pin, a pause, a dead WSUS or a safeguard hold.
+- Ideas for the checks came from reading Killer Tools' scripts and KillerBench (GPLv3 / no licence file, so no code was copied).
+
+### Fixed (before release)
+- Pause start dates (`2026-11-10`) are calendar days. Treating them as UTC midnight showed the day before in any time zone west of UTC; found by running the harness under New York time.
+
+### Tests
+- Get-WindowsUpdateStatus, 158 checks with a harness faking the registry, the Windows Update agent (COM), event logs, Setup files, processes, services and the clock. Covered:
+  - Healthy 25H2 Pro.
+  - Support: 24H2 Pro out of support, 24H2 Enterprise, 23H2 Education, LTSC 2024, Windows 10 22H2 with and without ESU patches, old Windows 10, Windows 10 LTSC 2021 (not guessed), 26H2 (not in the table), 72 days before end of support, Server, N editions.
+  - Updates: last patch and scan thresholds; failures repeated, single, aborted, fixed later, failing again, older than `-Days`, uninstalls, unknown codes (Win32 and not), more than five, no KB in the title, the 300-entry cap, the event-log fallback, connection events.
+  - Policy: Intune with and without the MDM marker, RMM agents, Intune plus an RMM agent, NoAutoUpdate, AllowAutoUpdate 5, notify-only, every kind of pause (live and expired), deferrals with and without the GPO switch, pins (out-of-support, supported, forward, Windows 10, switched off), WSUS answering / not answering / not a URL / not in use.
+  - Services: disabled, missing and optional ones. Disk thresholds, no disk and CIM failure.
+  - Upgrade: Red with each reason, UpgExU, Windows 10 keys ignored, plain key over ...Setup, safeguard holds, Orange, Yellow, no data. CompatData: hard blocks (hardware and app, namespaced XML), drivers that won't migrate, old, pre-install, clean, unreadable. SetupDiag: XML with and without remediation, old, registry fallback, unknown values, no date.
+  - Activity, ordering, `-Quiet`, the HTML (escaping, sections, footer), ASCII-only console output, and `-Watch`: start, CPU, events once each, Setup log growth, restart due, finish, heartbeats.
+- Run under UTC, New York and Tokyo time. Fifteen key behaviours were broken on purpose (later success clears a failure, pause expiry, the Intune marker, plain readiness key, HTML escaping, Windows 10 targets, pin matching, ESU, LTSC, N editions, UTC conversion, events once, patch thresholds, calendar dates, the GPO deferral switch); each was caught.
+- Rendered the HTML report in headless Chrome and checked it.
+
 ## 1.10.1 - 2026-11-10
 
 ### Fixed
