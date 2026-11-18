@@ -397,7 +397,7 @@ if ($env:OS -ne 'Windows_NT') {
 # The PowerShell window hides while the toolkit window is open and always comes back (even if the window
 # closes with an error). On Windows the real user32 code is compiled and called; anywhere else it must
 # quietly do nothing.
-Assert ($guiCode -match '\$console = Hide-ToolkitConsole\s+try \{ \[void\]\$window\.ShowDialog\(\) \}\s+finally \{ Restore-ToolkitConsole -Handle \$console \}') 'console hidden around ShowDialog, restored in finally'
+Assert ($guiCode -match '(?s)\$window\.Add_ContentRendered\(\{.*?Activate\(\).*?Hide-ToolkitConsole.*?\}\)\s+try \{ \[void\]\$window\.ShowDialog\(\) \}\s+finally \{\s+Restore-ToolkitConsole -Handle \$script:GuiConsoleHandle') 'console hidden once the window is drawn and in front, restored in finally'
 $hc = & $mod {
     $r = [pscustomobject]@{ Error = $null; Hidden = $false; Type = $false }
     try {

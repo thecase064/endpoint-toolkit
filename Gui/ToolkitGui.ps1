@@ -780,7 +780,16 @@ function Show-EndpointToolkitGui {
         return
     }
     Write-Host 'Toolkit window open. This PowerShell window hides until you close it.' -ForegroundColor DarkGray
-    $console = Hide-ToolkitConsole
+    # Hide the PowerShell window only once the toolkit window is drawn and in front. Hidden any earlier,
+    # Windows stops treating this as the app in front, and the toolkit window can open behind everything.
+    $script:GuiConsoleHandle = $null
+    $window.Add_ContentRendered({
+        try { [void]$args[0].Activate() } catch { $null = $_ }
+        if ($null -eq $script:GuiConsoleHandle) { $script:GuiConsoleHandle = Hide-ToolkitConsole }
+    })
     try { [void]$window.ShowDialog() }
-    finally { Restore-ToolkitConsole -Handle $console }
+    finally {
+        Restore-ToolkitConsole -Handle $script:GuiConsoleHandle
+        $script:GuiConsoleHandle = $null
+    }
 }
