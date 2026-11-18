@@ -840,7 +840,7 @@
       "icon": "E9F9",
       "path": "Tools/M365LicenseReport/Get-M365LicenseReport.ps1",
       "command": "Get-M365LicenseReport",
-      "description": "Graph-based user + licence workbook with reclaim and unlicensed sheets.",
+      "description": "Graph-based user + licence workbook with reclaim and unlicensed sheets. Licences named from Microsoft's own product list (downloaded at most weekly, no sign-in).",
       "brief": [
         "Signs in to a tenant (Microsoft Graph) and writes an Excel report of every user and their",
         "licences, with optional last sign-in and stale-account flags.",
@@ -881,7 +881,7 @@
       "icon": "E9D2",
       "path": "Tools/ExchangePlannerUsage/Get-ExchangePlannerUsage.ps1",
       "command": "Get-ExchangePlannerUsage",
-      "description": "Who is licensed for Exchange / Planner but not using it. CSV + Excel.",
+      "description": "Who is licensed for Exchange / Planner but not using it. CSV + Excel. Licences named from Microsoft's own product list (downloaded at most weekly, no sign-in).",
       "brief": [
         "Per-user Exchange and Planner usage for a tenant: who's licensed but not using them.",
         "Signs in to the tenant, writes a CSV (and Excel if ImportExcel is installed).",

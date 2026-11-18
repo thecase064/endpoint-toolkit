@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.16.0 - 2026-11-18
+
+### Changed
+- **Licence names from Microsoft's own list** in the **M365 licence report** and the **Exchange + Planner usage report.** Licences are named the way the admin centres name them, from the CSV behind Microsoft's "Product names and service plan identifiers for licensing" page, instead of a hand-kept table that goes stale every time Microsoft renames something (Azure AD -> Entra, Power BI (free) -> Microsoft Fabric (Free)).
+  - Downloaded from download.microsoft.com (no sign-in, nothing sent) at most **once a week**, saved to `%LOCALAPPDATA%\EndpointToolkit\LicenseNames.csv`, shared by both reports. If the download fails, the saved copy is used. A file that isn't the list (a Wi-Fi sign-in page, a cut-down or oversized file) is rejected and never replaces a good saved copy.
+  - Looked up by SKU part number, then by SKU id, so a SKU Microsoft has renamed still gets its name.
+  - **Licence report:** falls back to its built-in names, then a tidied part number, as before. The **Report Info** sheet has a new "Product names" row saying which list was used and when it was saved.
+  - **Usage report:** the **Licences** column now shows product names ("Microsoft 365 Business Premium"); a new **Licence SKUs** column keeps the part numbers (`SPB`) for filtering. Paid Planner / Project detection still goes by part number. Without the list, Licences shows part numbers, as before.
+  - **`-SkipNameDownload`** on both: no download, use the saved copy (or the fallbacks).
+- **`Get-LicenseNameMap`** added to `Tools/Shared/Helpers.ps1` (and its README), for any tool that needs licence names.
+- `docs/data-flow.md`: the new download and the `%LOCALAPPDATA%\EndpointToolkit\` folder.
+
+### Tests
+- 43 checks with a harness running the real helper against a fake download: first download, a fresh saved copy (used), an old one (replaced), `-MaxAgeDays`; no network with and without a saved copy; a captive-portal page, a cut-down file and a 21 MB file (all rejected, nothing left behind, the good copy kept); with and without a byte-order mark; part numbers and SKU ids in any case, a quoted name with a comma, first row wins, blank names skipped; `-SkipNameDownload` with an old copy, no copy and an unreadable one. Both reports' naming code is lifted out and tested (Microsoft's name first, then by SKU id, the built-in name, the tidied part number, no list at all), plus how each report is wired up.
+- Run under UTC, New York and Tokyo time; key behaviours broken on purpose, each caught.
+- **New repo test (CI only, needs the internet):** downloads Microsoft's real CSV through the helper. `SPB` and its SKU id must come back as Microsoft 365 Business Premium, `ENTERPRISEPACK` as Office 365 E3, with a believable number of names. A network failure skips; a file that downloads but doesn't read fails, as that means Microsoft moved or changed it. It also prints where the licence report's built-in names differ from Microsoft's.
+
 ## 1.15.0 - 2026-11-18
 
 ### Added

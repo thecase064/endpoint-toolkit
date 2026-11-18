@@ -9,6 +9,7 @@ Not a tool, and not in the menu. `Helpers.ps1` holds code that several tools loa
 | `Get-CurrentUserName` | the tools below | The account running the tool |
 | `Get-CurrentUserSid` | Old user profile cleanup, Audio check | Its SID (`S-1-5-18` when it's SYSTEM) |
 | `Resolve-AccountSid` | Old user profile cleanup | `DOMAIN\name` for a SID, or nothing when Windows can't name it (a deleted account, no domain controller in reach, an Entra account it hasn't cached) |
+| `Get-LicenseNameMap` | M365 licence report, Exchange + Planner usage | Microsoft's own product names for licences (`SPB` -> Microsoft 365 Business Premium), from the CSV behind "Product names and service plan identifiers for licensing". Downloaded from download.microsoft.com at most once a week into `%LOCALAPPDATA%\EndpointToolkit\LicenseNames.csv`; the saved copy is used when the download fails. Keyed by part number and SKU id. |
 | `Get-OtherSignedInUser` | Office activation reset, Teams cache clear, Teams Meeting add-in fix, OneDrive reset, Audio check | Returns the signed-in user when that's not the account running the tool, so per-user fixes can warn or stop |
 | `Get-GetHelpCmd` | M365 Apps reset (`-DeepClean`), Office activation reset | Downloads Microsoft's Get Help command line, unpacks it and refuses it unless it's validly signed by Microsoft |
 | `Invoke-GetHelpScenario` | the same | Runs one Get Help scenario from its own folder, shows and logs the output, returns the result code |

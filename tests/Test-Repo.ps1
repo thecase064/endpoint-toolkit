@@ -558,6 +558,43 @@ else {
 }
 
 # ------------------------------------------------------------------------------------------------
+Write-Host "`nLicence names (Microsoft's list)" -ForegroundColor Cyan
+# The real download, through the same helper the two reports use. GitHub's runners only (it needs the
+# internet). A network failure skips; a file that downloads but doesn't read as the list fails, since
+# that means Microsoft changed the file or the link and both reports would quietly fall back.
+if ($env:GITHUB_ACTIONS -ne 'true') {
+    Write-Host '  SKIP  downloads from download.microsoft.com; CI runs this part' -ForegroundColor DarkGray
+}
+else {
+    . (Join-Path (Join-Path (Join-Path $root 'Tools') 'Shared') 'Helpers.ps1')
+    $licCache = Join-Path ([IO.Path]::GetTempPath()) ('licnames-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $lic = Get-LicenseNameMap -CacheFolder $licCache
+        if (-not $lic.Source -and $lic.Note -notmatch 'expected columns|names in it|unexpectedly large') {
+            Write-Host "  SKIP  couldn't reach Microsoft: $($lic.Note)" -ForegroundColor DarkGray
+        }
+        else {
+            Assert ($lic.Source -eq 'downloaded') "Microsoft's licence CSV downloads and reads ($(if ($lic.Source) { "$($lic.Names.Count) names" } else { $lic.Note }))"
+            Assert ($lic.Names['SPB'] -eq 'Microsoft 365 Business Premium' -and $lic.Names['cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46'] -eq 'Microsoft 365 Business Premium') "SPB and its SKU id -> Microsoft 365 Business Premium ('$($lic.Names['SPB'])')"
+            Assert ($lic.Names['ENTERPRISEPACK'] -eq 'Office 365 E3') "ENTERPRISEPACK -> Office 365 E3 ('$($lic.Names['ENTERPRISEPACK'])')"
+            Assert ($lic.Names.Count -gt 500) "a believable number of names ($($lic.Names.Count))"
+            Assert (Test-Path -LiteralPath (Join-Path $licCache 'LicenseNames.csv')) 'saved copy written'
+            # Not a test: where the licence report's built-in names differ from Microsoft's, so stale ones can be tidied.
+            $repAst = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'Tools/M365LicenseReport/Get-M365LicenseReport.ps1'), [ref]$null, [ref]$null)
+            $tblAst = $repAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -eq '$skuFriendlyNames' }, $true) | Select-Object -First 1
+            $builtIn = & ([scriptblock]::Create($tblAst.Right.Extent.Text))
+            $diff = @(foreach ($k in ($builtIn.Keys | Sort-Object)) {
+                if (-not $lic.Names.ContainsKey($k)) { "    $k : built-in '$($builtIn[$k])', not in Microsoft's list" }
+                elseif ($lic.Names[$k] -ne $builtIn[$k]) { "    $k : built-in '$($builtIn[$k])', Microsoft '$($lic.Names[$k])'" }
+            })
+            Write-Host "  INFO  licence report built-in names that differ from Microsoft's: $($diff.Count) of $($builtIn.Count)" -ForegroundColor DarkGray
+            $diff | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
+        }
+    }
+    finally { Remove-Item -LiteralPath $licCache -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# ------------------------------------------------------------------------------------------------
 Write-Host "`nLaunchers" -ForegroundColor Cyan
 Assert ((Get-ScriptParameterName (Join-Path $root 'install.ps1')) -contains 'Console') 'install.ps1 has -Console'
 Assert ((Get-ScriptParameterName (Join-Path $root 'Start-Toolkit.ps1')) -contains 'Console') 'Start-Toolkit.ps1 has -Console'
@@ -581,7 +618,8 @@ if (Test-Path -LiteralPath $localFile) {
 # Known-safe hits: the module's own GUID, Adobe's public CDN key for Reader version lookups,
 # Windows' own built-in power plan / power mode GUIDs (the same on every PC; Performance check), and
 # Windows' public audio IDs: Core Audio COM classes / interfaces, endpoint property keys and the
-# sound device class (Audio check).
+# sound device class (Audio check), and the download folder id in Microsoft's public link to its
+# licence product-name CSV (licence report, usage report).
 $allow = @([regex]::Escape($psd1.GUID), 'api_key=dc-get-adobereader-cdn',
     'a1841308-3541-4fab-bc81-f71556f20b4a',   # Power saver plan
     '961cc777-2547-4f9d-8174-7d86181b8a7a',   # power mode: Best power efficiency
@@ -593,7 +631,8 @@ $allow = @([regex]::Escape($psd1.GUID), 'api_key=dc-get-adobereader-cdn',
     'BCDE0395-E52F-467C-8E3D-C4579291692E',   # MMDeviceEnumerator (Core Audio)
     'A95664D2-9614-4F35-A746-DE8DB63617E6',   # IMMDeviceEnumerator
     'D666063F-1587-4E43-81F1-B948E807363F',   # IMMDevice
-    '5CDF2C82-841E-4546-9722-0CF74078229A')   # IAudioEndpointVolume
+    '5CDF2C82-841E-4546-9722-0CF74078229A',   # IAudioEndpointVolume
+    'download\.microsoft\.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/')   # Microsoft's licence names CSV
 
 $files = Get-ChildItem -LiteralPath $root -Recurse -File -Force |
     Where-Object { $_.FullName -notmatch '[\\/](\.git|dist)[\\/]' -and $_.Name -ne 'leak-patterns.local.txt' -and $_.Name -ne 'Test-Repo.ps1' }

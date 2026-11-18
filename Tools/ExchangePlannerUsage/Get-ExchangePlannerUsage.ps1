@@ -31,6 +31,10 @@
 .PARAMETER OutputFolder
     Where the report is saved. Default: Documents\M365Reports (created if missing).
 
+.PARAMETER SkipNameDownload
+    Don't download Microsoft's list of product names; use the saved copy from an earlier run, or show the
+    SKU part numbers. By default the list is downloaded at most once a week (see NOTES).
+
 .EXAMPLE
     .\Get-ExchangePlannerUsage.ps1 -TenantId contoso.onmicrosoft.com
 
@@ -41,6 +45,10 @@
     Modules : Microsoft.Graph.Authentication, ExchangeOnlineManagement   (optional: ImportExcel)
     Roles   : Global Reader + View-Only Audit Logs covers all the reads.
               Toggling report concealment needs an admin who can change Org settings > Reports (e.g. Global Admin).
+    Licences: shown by product name ("Microsoft 365 Business Premium") from Microsoft's own list, the CSV
+              behind "Product names and service plan identifiers for licensing", downloaded from
+              download.microsoft.com (no sign-in) at most once a week into %LOCALAPPDATA%\EndpointToolkit.
+              The "Licence SKUs" column keeps the part numbers (SPB) for filtering.
 
     PLANNER CAVEAT: Microsoft only writes Planner/Project audit events for tenants with Audit (Premium)
     (E5 or the add-on) AND a paid Project/Planner Plan 1 or higher (MC590113). On Business Premium / E3
@@ -55,7 +63,8 @@ param(
     [ValidateRange(1, 180)][int]$Days = 90,
     [switch]$SkipSignInLogs,
     [switch]$TempUnconcealReports,
-    [string]$OutputFolder = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'M365Reports')
+    [string]$OutputFolder = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'M365Reports'),
+    [switch]$SkipNameDownload
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,7 +80,17 @@ $SignInDays            = 30                                                     
 #endregion
 
 #region ---- Helpers ----------------------------------------------------------
+. (Join-Path (Join-Path (Split-Path $PSScriptRoot -Parent) 'Shared') 'Helpers.ps1')
+$script:MsLicenseNames = @{}
+
 function Write-Step([string]$Message) { Write-Host "`n>> $Message" -ForegroundColor Cyan }
+
+function Get-SkuDisplayName([string]$SkuId, [string]$PartNumber) {
+    # Microsoft's product name (by part number, then SKU id), else the part number itself.
+    if ($PartNumber -and $script:MsLicenseNames.ContainsKey($PartNumber)) { return $script:MsLicenseNames[$PartNumber] }
+    if ($SkuId -and $script:MsLicenseNames.ContainsKey($SkuId)) { return $script:MsLicenseNames[$SkuId] }
+    $PartNumber
+}
 
 function ConvertTo-NullableDate($Value) {
     if ([string]::IsNullOrWhiteSpace([string]$Value)) { return $null }
@@ -219,6 +238,12 @@ try {
         $skuNames[[string]$sku.skuId] = $sku.skuPartNumber
         foreach ($sp in $sku.servicePlans) { $planNames[[string]$sp.servicePlanId] = $sp.servicePlanName }
     }
+    $nameMap = Get-LicenseNameMap -Offline:$SkipNameDownload
+    $script:MsLicenseNames = $nameMap.Names
+    if ($nameMap.Source) { Write-Host "Product names: Microsoft's list ($($nameMap.Source))" }
+    else { Write-Warning "Product names: showing SKU part numbers. $($nameMap.Note)" }
+    $skuDisplay = @{}
+    foreach ($id in @($skuNames.Keys)) { $skuDisplay[$id] = Get-SkuDisplayName -SkuId $id -PartNumber $skuNames[$id] }
 
     $select = 'id,displayName,userPrincipalName,accountEnabled,userType,assignedLicenses,assignedPlans'
     $hasSignInActivity = $true
@@ -314,6 +339,7 @@ try {
         $enabledPlans = @($u.assignedPlans | Where-Object { $_.capabilityStatus -in 'Enabled', 'Warning' } |
                           ForEach-Object { $planNames[[string]$_.servicePlanId] } | Where-Object { $_ })
         $skuList      = @($u.assignedLicenses | ForEach-Object { $skuNames[[string]$_.skuId] } | Where-Object { $_ })
+        $licenceList  = @($u.assignedLicenses | ForEach-Object { $skuDisplay[[string]$_.skuId] } | Where-Object { $_ })
 
         $exLicensed = @($enabledPlans -match $ExchangePlanPattern).Count -gt 0
         $plPaid     = @($skuList -match $PaidPlannerSkuPattern).Count -gt 0
@@ -383,7 +409,8 @@ try {
             "Planner Edits (${Days}d)"             = $plEdits
             "Planner Views (${Days}d)"             = $plViews
             "Planner App Sign-in (${SignInDays}d)" = Format-Date $ps
-            'Licences'                             = $skuList -join '; '
+            'Licences'                             = $licenceList -join '; '
+            'Licence SKUs'                         = $skuList -join '; '
         }
     }
     $report = @($report | Sort-Object @{ Expression = { [bool]$_.Flags }; Descending = $true }, 'Display Name')

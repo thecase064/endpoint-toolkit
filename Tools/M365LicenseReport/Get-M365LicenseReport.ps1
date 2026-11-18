@@ -44,6 +44,10 @@
     Days without a sign-in before a licensed account is flagged as stale. Default 60.
     Only applies when -IncludeLastSignIn is used.
 
+.PARAMETER SkipNameDownload
+    Don't download Microsoft's list of product names; use the saved copy from an earlier run, or the
+    built-in names. By default the list is downloaded at most once a week (see NOTES).
+
 .PARAMETER InstallMissingModules
     Install any missing modules for the current user instead of stopping.
 
@@ -68,6 +72,11 @@
     "Microsoft Graph Command Line Tools" enterprise app. Read-only scopes only.
     The script disconnects at the end so a cached token is not carried into the next tenant.
 
+    Product names ("Microsoft 365 Business Premium" for SPB) come from Microsoft's own list, the CSV
+    behind "Product names and service plan identifiers for licensing", downloaded from
+    download.microsoft.com (no sign-in) at most once a week into %LOCALAPPDATA%\EndpointToolkit.
+    If it can't be downloaded, the saved copy is used, then the built-in names below.
+
     Modules: Microsoft.Graph.Authentication, Microsoft.Graph.Users,
              Microsoft.Graph.Identity.DirectoryManagement, Microsoft.Graph.Groups, ImportExcel
 #>
@@ -81,6 +90,7 @@ param(
     [switch]$LicensedOnly,
     [switch]$IncludeLastSignIn,
     [int]$StaleDays = 60,
+    [switch]$SkipNameDownload,
     [switch]$InstallMissingModules,
     [switch]$NoOpen
 )
@@ -88,6 +98,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $script:StartTime = Get-Date
 $script:SignInSkipReason = $null
+. (Join-Path (Join-Path (Split-Path $PSScriptRoot -Parent) 'Shared') 'Helpers.ps1')
+$script:MsLicenseNames = @{}
 
 function Write-Step {
     param([string]$Message)
@@ -158,8 +170,9 @@ Import-Module Microsoft.Graph.Authentication, Microsoft.Graph.Users,
 
 #region ------------------------------------------------------- Friendly SKU names
 
-# Common SKU part numbers -> product names. Anything not listed falls back to a
-# tidied-up version of the SKU part number, so the report never shows a bare GUID.
+# Built-in names for common SKU part numbers, used when Microsoft's own list (downloaded below) isn't
+# available or doesn't have the SKU. Anything in neither falls back to a tidied-up version of the SKU
+# part number, so the report never shows a bare GUID.
 $skuFriendlyNames = @{
     'SPE_E3'                            = 'Microsoft 365 E3'
     'SPE_E5'                            = 'Microsoft 365 E5'
@@ -225,7 +238,10 @@ $skuFriendlyNames = @{
 }
 
 function Get-FriendlyLicenseName {
-    param([string]$SkuPartNumber)
+    # Microsoft's own name (by part number, then SKU id), then the built-in name, then a tidied part number.
+    param([string]$SkuPartNumber, [string]$SkuId)
+    if ($SkuPartNumber -and $script:MsLicenseNames.ContainsKey($SkuPartNumber)) { return $script:MsLicenseNames[$SkuPartNumber] }
+    if ($SkuId -and $script:MsLicenseNames.ContainsKey($SkuId)) { return $script:MsLicenseNames[$SkuId] }
     if ($skuFriendlyNames.ContainsKey($SkuPartNumber)) {
         return $skuFriendlyNames[$SkuPartNumber]
     }
@@ -267,6 +283,12 @@ Write-Host ("  Signed in as : {0}" -f $context.Account) -ForegroundColor Green
 
 #region ------------------------------------------------------------------- SKUs
 
+Write-Step 'Getting product names...'
+$nameMap = Get-LicenseNameMap -Offline:$SkipNameDownload
+$script:MsLicenseNames = $nameMap.Names
+$script:NameSource = if ($nameMap.Source) { "Microsoft's list ($($nameMap.Source))" } else { "Built-in names only. $($nameMap.Note)" }
+Write-Host ("  {0}" -f $script:NameSource) -ForegroundColor $(if ($nameMap.Source) { 'Green' } else { 'Yellow' })
+
 Write-Step 'Retrieving subscribed SKUs...'
 $subscribedSkus = Get-MgSubscribedSku -All
 
@@ -278,7 +300,7 @@ foreach ($sku in $subscribedSkus) {
     $skuLookup[[string]$sku.SkuId] = [PSCustomObject]@{
         SkuId         = [string]$sku.SkuId
         SkuPartNumber = $sku.SkuPartNumber
-        FriendlyName  = Get-FriendlyLicenseName -SkuPartNumber $sku.SkuPartNumber
+        FriendlyName  = Get-FriendlyLicenseName -SkuPartNumber $sku.SkuPartNumber -SkuId ([string]$sku.SkuId)
         Enabled       = $sku.PrepaidUnits.Enabled
         Warning       = $sku.PrepaidUnits.Warning
         Suspended     = $sku.PrepaidUnits.Suspended
@@ -566,6 +588,7 @@ $info = @(
     [PSCustomObject]@{ Item = 'Guests included';       Value = [bool]$IncludeGuests }
     [PSCustomObject]@{ Item = 'Sign-in data included'; Value = [bool]$IncludeLastSignIn }
     [PSCustomObject]@{ Item = 'Stale threshold (days)';Value = $(if ($IncludeLastSignIn) { $StaleDays } else { 'n/a' }) }
+    [PSCustomObject]@{ Item = 'Product names';         Value = $script:NameSource }
 )
 
 if ($script:SignInSkipReason) {

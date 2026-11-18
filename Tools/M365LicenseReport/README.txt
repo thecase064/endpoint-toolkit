@@ -112,6 +112,7 @@ Omit `-TenantId` to be prompted for which tenant to sign into.
 | `-StaleDays` | 60 | Days without sign-in before a licensed account is flagged. Only applies with `-IncludeLastSignIn` |
 | `-InstallMissingModules` | off | Installs missing modules for the current user instead of stopping |
 | `-NoOpen` | off | Don't open the workbook when finished |
+| `-SkipNameDownload` | off | Don't download Microsoft's product-name list; use the saved copy or the built-in names |
 
 Output filename: `M365-License-Report_<ClientName>_<yyyyMMdd-HHmm>.xlsx`
 
@@ -135,6 +136,6 @@ Output filename: `M365-License-Report_<ClientName>_<yyyyMMdd-HHmm>.xlsx`
 - **Sign-in data silently degrades.** If `-IncludeLastSignIn` fails (no P1, or the scope wasn't consented), the script warns, drops the switch, and re-runs the user query without it. You still get a report — just no Reclaim stale rows. Check the console output rather than assuming.
 - **Summary "Assigned" is tenant-wide.** That figure comes from Graph's `ConsumedUnits`, so it counts every assignment including guests and shared mailboxes. If you ran without `-IncludeGuests` or with `-LicensedOnly`, the row count in License Detail won't match it. That's expected, not a bug.
 - **Large tenants take a while.** Group-based licensing means one Graph lookup per unique group (cached after the first). Sign-in activity also slows the user query noticeably.
-- **Unknown SKUs still work.** Anything not in the friendly-name table falls back to a tidied version of the SKU part number, so you never get a bare GUID — but the name may look odd. Add it to the `$skuFriendlyNames` hashtable near the top if you see it regularly.
+- **Product names come from Microsoft's own list.** The CSV behind "Product names and service plan identifiers for licensing" is downloaded from download.microsoft.com (no sign-in) at most once a week and saved to `%LOCALAPPDATA%\EndpointToolkit\LicenseNames.csv`, so new and renamed products (Azure AD -> Entra, Power BI free -> Fabric) show as the admin centre names them. The Report Info sheet says which list was used. If the download fails it uses the saved copy, then the built-in `$skuFriendlyNames` table, then a tidied version of the SKU part number, so you never get a bare GUID. `-SkipNameDownload` skips the download.
 - **Deprovisioned SKUs are skipped.** If a user holds a licence for a SKU the tenant is no longer subscribed to, that row is dropped.
 - **Same-minute reruns overwrite.** Filename is precise to the minute, so a rerun within the same minute replaces the previous file.

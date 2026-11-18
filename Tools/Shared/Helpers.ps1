@@ -7,6 +7,8 @@
     Get-CurrentUserSid      Its SID (S-1-5-18 for SYSTEM).
     Resolve-AccountSid      DOMAIN\name for a SID, or nothing when Windows can't name it (a deleted
                             account, no domain controller in reach, an Entra account not cached here).
+    Get-LicenseNameMap      Microsoft's own product names for licences (SPB -> Microsoft 365 Business
+                            Premium), from its published CSV, cached for a week.
     Get-OtherSignedInUser   Who is signed in at the console, when that's not the account running this.
                             Per-user fixes (Teams, Outlook, Office sign-in) only touch the account
                             running them, so this lets a tool warn when that's the wrong person.
@@ -114,4 +116,72 @@ function Clear-GetHelpDownload {
     param([Parameter(Mandatory)][string] $WorkDir)
     Remove-Item -LiteralPath (Join-Path $WorkDir 'GetHelpCmd.zip'), (Join-Path $WorkDir 'GetHelp') `
         -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+$script:LicenseCsvUrl = 'https://download.microsoft.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/Product%20names%20and%20service%20plan%20identifiers%20for%20licensing.csv'
+$script:LicenseCsvMaxBytes = 20MB
+
+function ConvertFrom-LicenseCsv {
+    # Reads Microsoft's licensing CSV into name lookups keyed by SKU part number (String_Id) and SKU id
+    # (GUID); PowerShell hashtables ignore case. Throws when it doesn't look like that file.
+    param([Parameter(Mandatory)][string] $Path)
+    $file = Get-Item -LiteralPath $Path
+    if ($file.Length -gt $script:LicenseCsvMaxBytes) { throw "it's unexpectedly large ($([math]::Round($file.Length / 1MB)) MB)" }
+    # Read as UTF-8 so the file's byte-order mark doesn't end up in the first column name.
+    $text = [IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8).TrimStart([char]0xFEFF)
+    $rows = @(($text -split "\r?\n" | Where-Object { $_ }) | ConvertFrom-Csv)
+    if (-not $rows.Count -or -not $rows[0].PSObject.Properties['Product_Display_Name'] -or -not $rows[0].PSObject.Properties['String_Id'] -or -not $rows[0].PSObject.Properties['GUID']) {
+        throw "it doesn't have the expected columns (Product_Display_Name, String_Id, GUID)"
+    }
+    $names = @{}
+    foreach ($r in $rows) {
+        $n = ([string]$r.Product_Display_Name).Trim()
+        if (-not $n) { continue }
+        foreach ($k in @(([string]$r.String_Id).Trim(), ([string]$r.GUID).Trim())) {
+            if ($k -and -not $names.ContainsKey($k)) { $names[$k] = $n }
+        }
+    }
+    if ($names.Count -lt 50) { throw "it only has $($names.Count) names in it" }
+    $names
+}
+
+function Get-LicenseNameMap {
+    # Microsoft's own product names for licences, from the CSV behind "Product names and service plan
+    # identifiers for licensing" (the names the admin centres show). Downloaded at most once every
+    # MaxAgeDays into CacheFolder; the cached copy is used when the download fails, whatever its age.
+    # Returns Names (part number or SKU id -> name; empty when there's neither), Source ('downloaded' /
+    # 'cached yyyy-MM-dd' / '') and Note (why not, when it couldn't).
+    param(
+        [string] $CacheFolder = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'EndpointToolkit'),
+        [int] $MaxAgeDays = 7,
+        [switch] $Offline
+    )
+    $cache  = Join-Path $CacheFolder 'LicenseNames.csv'
+    $result = [pscustomobject]@{ Names = @{}; Source = ''; Note = '' }
+    $fresh  = (Test-Path -LiteralPath $cache) -and ((Get-Item -LiteralPath $cache).LastWriteTime -gt (Get-Date).AddDays(-$MaxAgeDays))
+    if (-not $fresh -and -not $Offline) {
+        $tmp = Join-Path $CacheFolder ('LicenseNames.{0}.tmp' -f [guid]::NewGuid().ToString('N'))
+        try {
+            if (-not (Test-Path -LiteralPath $CacheFolder)) { New-Item -ItemType Directory -Path $CacheFolder -Force | Out-Null }
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+            $ProgressPreference = 'SilentlyContinue'   # this function only; 5.1's progress bar slows downloads a lot
+            Invoke-WebRequest -Uri $script:LicenseCsvUrl -OutFile $tmp -UseBasicParsing -TimeoutSec 30
+            $names = ConvertFrom-LicenseCsv $tmp
+            Move-Item -LiteralPath $tmp -Destination $cache -Force
+            $result.Names = $names
+            $result.Source = 'downloaded'
+            return $result
+        }
+        catch { $result.Note = "Couldn't get Microsoft's list: $($_.Exception.Message)" }
+        finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+    }
+    if (Test-Path -LiteralPath $cache) {
+        try {
+            $result.Names = ConvertFrom-LicenseCsv $cache
+            $result.Source = 'cached ' + (Get-Item -LiteralPath $cache).LastWriteTime.ToString('yyyy-MM-dd')
+        }
+        catch { $result.Note = (@($result.Note, "The saved copy is unreadable: $($_.Exception.Message)") | Where-Object { $_ }) -join ' ' }
+    }
+    elseif ($Offline) { $result.Note = 'Not downloaded (-SkipNameDownload) and there is no saved copy.' }
+    $result
 }

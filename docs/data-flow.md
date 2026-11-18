@@ -2,7 +2,7 @@
 
 Reports save to the PC. Only three tools sign into Microsoft 365: Intune primary user (also run by New device setup), M365 licence report, and Exchange + Planner usage.
 
-For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.15.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
+For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.16.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
 
 ```mermaid
 flowchart LR
@@ -202,10 +202,13 @@ flowchart LR
     classDef auth fill:#FFD8BE,stroke:#D98A57,color:#1b1b1b
     P1T("<b>M365 licence report (Excel)</b><br/>No admin. Users + licences,<br/>reclaim and unlicensed sheets"):::tool
     P1A["<b>Microsoft Graph sign-in</b><br/>Pick the tenant, or -TenantId<br/>User.Read.All, Organization.Read.All,<br/>Directory.Read.All, Group.Read.All (+<br/>AuditLog.Read.All for last sign-in)<br/>Read-only"]:::auth --> P1T
-    P1N["<b>Downloads</b><br/>PowerShell Gallery: Graph modules +<br/>ImportExcel, only with -InstallMissingModules"]:::net --> P1T
+    P1N["<b>Downloads</b><br/>PowerShell Gallery: Graph modules +<br/>ImportExcel, only with -InstallMissingModules<br/>download.microsoft.com: Microsoft's licence<br/>product names (CSV, no sign-in), at most weekly,<br/>not with -SkipNameDownload"]:::net --> P1T
+    P1L["%LOCALAPPDATA%\EndpointToolkit\LicenseNames.csv<br/>(saved copy of Microsoft's list)"]:::local <--> P1T
     P1T --> P1O["Documents\M365Reports\M365-License-Report_<br/>#lt;client#gt;_#lt;time#gt;.xlsx"]:::out
     P2T("<b>Exchange + Planner usage</b><br/>No admin. Who's licensed but not<br/>using it"):::tool
     P2A["<b>Microsoft Graph + Exchange Online sign-in</b><br/>User.Read.All, Reports.Read.All,<br/>AuditLog.Read.All, Organization.Read.All,<br/>ReportSettings.ReadWrite.All<br/>GDAP: Exchange via -DelegatedOrganization<br/>Asks to un-conceal report names for the run,<br/>then restores"]:::auth <--> P2T
+    P2N["<b>Downloads</b><br/>download.microsoft.com: Microsoft's licence<br/>product names (CSV, no sign-in), at most weekly,<br/>not with -SkipNameDownload"]:::net --> P2T
+    P2L["%LOCALAPPDATA%\EndpointToolkit\LicenseNames.csv<br/>(saved copy, shared with the licence report)"]:::local <--> P2T
     P2T --> P2O["Documents\M365Reports\M365_Usage_#lt;tenant#gt;_<br/>#lt;time#gt;.csv<br/>(+ .xlsx with ImportExcel)"]:::out
 ```
 
@@ -231,6 +234,7 @@ flowchart LR
 | `C:\EntraIntuneHealth\` | Entra / Intune health (-CollectLogs) |
 | `Documents\M365Reports\` | M365 licence report, Exchange + Planner usage |
 | `%APPDATA%\EventTriage\` | Event triage (mutes) |
+| `%LOCALAPPDATA%\EndpointToolkit\` | M365 licence report, Exchange + Planner usage (`LicenseNames.csv`, Microsoft's product names, refreshed at most weekly) |
 | `%TEMP%` | Window run options, Chrome + Reader downloads, Driver import unzip |
 | Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, Old user profile cleanup, Audio check, Error code explainer, BitLocker check, Driver import |
 
