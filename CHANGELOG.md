@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.0 - 2026-11-18
+
+### Added
+- **Time sync fix** (`Repair-TimeSync`, Repair, admin). For "the clock's wrong" and sign-ins or Teams failing because the time is out. Checks first, fixes, then measures again:
+  - **Check:** whether the PC is a domain controller, a domain member or not joined; the Windows Time service (missing, disabled, stopped is normal); **Set time automatically** turned off; the configured time source against the PC's role (a domain member on an outside server, a workgroup PC set to follow a domain); time settings from Group Policy / Intune; the source actually in use (Local CMOS Clock, Free-running System Clock, the VM host); the last good sync; Time-Service events from the last 7 days (no answer from the server, can't reach a DC); the time zone and whether it's set automatically.
+  - **Measure:** how far out the clock is, from three samples against its own source (the median, so one bad sample doesn't count). Over 30 s is a WARN, over 5 minutes a FAIL (Kerberos sign-ins break). Shows how far out, not which way. A FAIL when the clock is further out than the largest jump Windows will make by itself.
+  - **Fix:** turns the time service back on (Manual) and starts it, turns automatic time back on (the domain for members, the existing or time.windows.com server otherwise), resyncs (rediscovering the source after a change, retrying once if the service had stopped), then measures again and shows before and after. Every change prints its undo command.
+  - Leaves alone: domain controllers (report only), anything set by policy, and the time server unless `-SetPeer` is given, which is refused on domain members. `-Peer` picks a different server, `-Reference` measures against one without changing anything. Never restarts.
+  - `-CheckOnly` changes nothing; unelevated it checks only. `-Quiet` prints one line. Exit 0 when the clock ends up in time (check only: no FAIL).
+
+### Tests
+- Repair-TimeSync, 84 checks with a harness faking `w32tm` (sources, status, stripchart samples, resync and config results, error codes), the registry, services, CIM, events, the time zone and the clock. Covered: healthy, `-CheckOnly`, unelevated, `-Quiet`; offsets in time / WARN / FAIL / fixed / still off / one wild sample / comma decimals / days long / unmeasurable; the phase-correction limits (both, one, unlimited, -1); the service disabled, failing to change, failing to start, already running, missing, stopping before the resync; automatic time off (workgroup, no server, domain member, by policy); a domain member on pool.ntp.org; a workgroup PC on NT5DS; domain member and controller; `-SetPeer` (allowed, custom peer, refused on a member and under policy, config failing, bad host names); `-Reference`; sources (CMOS clock, VM host); last sync thresholds, never, non-English output; events; output order and ASCII.
+- Run under UTC, New York and Tokyo time. Fifteen key behaviours were broken on purpose (DCs left alone, `-CheckOnly`, `-SetPeer` refusals, the median, comma decimals, the -1 limit, rediscover, undo commands, the 0x80070426 retry, daily sync for domain members, the 7-day event window, domhier for members, measuring against its own source, the exit code); each was caught.
+
 ## 1.11.0 - 2026-11-18
 
 ### Added

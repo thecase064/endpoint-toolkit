@@ -2,7 +2,7 @@
 
 Reports save to the PC. Only three tools sign into Microsoft 365: Intune primary user (also run by New device setup), M365 licence report, and Exchange + Planner usage.
 
-For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.11.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
+For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.12.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
 
 ```mermaid
 flowchart LR
@@ -128,6 +128,10 @@ flowchart LR
     R7T("<b>OneDrive reset</b><br/>Run as the user (refuses admin).<br/>OneDrive.exe /reset, then makes<br/>sure it starts again"):::tool
     R7L["OneDrive.exe: running copy, then HKCU<br/>OneDriveTrigger, then the 3 install folders<br/>Accounts + libraries:<br/>HKCU\Software\Microsoft\OneDrive\Accounts"]:::local --> R7T
     R7T --> R7O["Console only"]:::out
+    R8T("<b>Time sync fix</b><br/>Admin. Checks, then resyncs. Time<br/>server changed only with -SetPeer#59;<br/>DCs report only"):::tool
+    R8N["<b>Online (no sign-in)</b><br/>NTP (UDP 123) to the PC's own time source or<br/>-Reference (default time.windows.com)"]:::net <--> R8T
+    R8L["W32Time registry (Parameters, Config, policy),<br/>w32tm /query, Time-Service events, time zone<br/>Fix: W32Time start type + start, w32tm /config<br/>(automatic time / -SetPeer), w32tm /resync"]:::local <--> R8T
+    R8T --> R8O["Console only"]:::out
 ```
 
 ## Diagnose
@@ -219,6 +223,6 @@ flowchart LR
 | `Documents\M365Reports\` | M365 licence report, Exchange + Planner usage |
 | `%APPDATA%\EventTriage\` | Event triage (mutes) |
 | `%TEMP%` | Window run options, Chrome + Reader downloads, Driver import unzip |
-| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, BitLocker check, Driver import |
+| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, BitLocker check, Driver import |
 
 `Documents` is the Documents folder of the account running the tool, which follows OneDrive redirection.

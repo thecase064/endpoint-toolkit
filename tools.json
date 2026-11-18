@@ -459,6 +459,37 @@
       ]
     },
     {
+      "id": "time-sync",
+      "name": "Time sync fix (clock wrong)",
+      "category": "Repair",
+      "icon": "E823",
+      "path": "Tools/TimeSync/Repair-TimeSync.ps1",
+      "command": "Repair-TimeSync",
+      "description": "The clock's wrong: checks where the PC gets its time, automatic time, the Windows Time service, the last good sync, time-service errors and how far out the clock is, then resyncs and measures again. Turns the time service and automatic time back on if they're off. Changes the time server only with -SetPeer, never on domain PCs; domain controllers are only reported on.",
+      "brief": [
+        "The clock's wrong (or sign-ins fail on time): checks where the PC gets its time, the Windows",
+        "Time service, the last good sync and how far out the clock is, then resyncs and measures again.",
+        "Turns the time service and automatic time back on if they're off. Never restarts.",
+        "Changes the time server only if asked, never on domain PCs; domain controllers: report only."
+      ],
+      "admin": true,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "CheckOnly",
+          "type": "switch",
+          "prompt": "Only check, change nothing?",
+          "default": false
+        },
+        {
+          "param": "SetPeer",
+          "type": "switch",
+          "prompt": "Also point it at time.windows.com (not on domain PCs)?",
+          "default": false
+        }
+      ]
+    },
+    {
       "id": "quick-triage",
       "name": "Quick triage (first five minutes)",
       "category": "Diagnose",
