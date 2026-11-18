@@ -166,7 +166,12 @@ function Find-Code {
 # ================================================================================================
 function Get-WindowsText {
     # certutil -error: "0x80070005 (WIN32: 5 ERROR_ACCESS_DENIED) -- 2147942405 (-2147024891)" then
-    # "Error message text: Access is denied." (the label is translated on other languages).
+    # "Error message text: Access is denied." (the label is translated on other languages). certutil's
+    # answer is final: it reads the same message tables .NET would. Seen on real Windows:
+    #   - unknown codes echo back as "Error 0x800f0922 (...)" with no name
+    #   - a number with no Windows error behind it (43) can pick up a stray message with %1 blanks and no
+    #     name, so a message with blanks only counts when Windows also gave it a name
+    #   - real messages can have blanks too (0xC0000005: "...at 0x%p..."): shown as "..."
     param([int64] $Value, [string] $Form)
     $arg = if ($Form -eq 'number') { [string]$Value } else { '0x{0:X8}' -f $Value }
     $r = [pscustomobject]@{ Name = $null; Text = $null; Via = $null }
@@ -177,17 +182,28 @@ function Get-WindowsText {
         $names = @([regex]::Matches($inside, '\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b') | ForEach-Object Value)
         if ($names.Count) { $r.Name = $names[-1] }
         $msg = ($lines[1] -split ':\s*', 2)[-1].Trim()
-        if ($msg -and $msg -notmatch '^(Error\s+)?0x[0-9A-Fa-f]+\b') { $r.Text = $msg }
+        if ($msg -and $msg -notmatch '^(Error\s+)?0x[0-9A-Fa-f]+\b') { $r.Text = Format-WindowsText $msg $r.Name }
         $r.Via = 'certutil'
-        if ($r.Name -or $r.Text) { return $r }
+        return $r
     }
     try {
         $signed = if ($Value -gt 0x7FFFFFFF) { $Value - 4294967296 } else { $Value }
         $m = ([ComponentModel.Win32Exception]::new([int]$signed)).Message
-        if ($m -and $m -notmatch '^Unknown error') { $r.Text = $m; $r.Via = 'FormatMessage' }
+        if ($m -and $m -notmatch '^Unknown error') { $r.Text = Format-WindowsText $m $null; if ($r.Text) { $r.Via = 'FormatMessage' } }
     }
     catch { Write-Verbose "No Windows text for ${arg}: $($_.Exception.Message)" }
     $r
+}
+
+function Format-WindowsText {
+    # Fills message blanks (%1, %p, %s...) with "...", or drops the message when it has blanks but no name.
+    param([string] $Text, [string] $Name)
+    $blanks = '%(?:\d+(?:![^!]*!)?|[a-zA-Z]{1,2})'
+    if ($Text -match $blanks) {
+        if (-not $Name) { return $null }
+        $Text = [regex]::Replace($Text, $blanks, '...')
+    }
+    $Text
 }
 
 $NativeError = $null

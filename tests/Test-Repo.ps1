@@ -550,11 +550,11 @@ else {
     $ad = $byIn['0x80070005']
     Assert ($ad -and $ad.WindowsName -eq 'ERROR_ACCESS_DENIED' -and $ad.WindowsText -and $ad.WindowsVia -eq 'certutil') "certutil read: 0x80070005 = $($ad.WindowsName) - $($ad.WindowsText) (via $($ad.WindowsVia))"
     $cbs = $byIn['0x800F0922']
-    Assert ($cbs -and $cbs.Toolkit.Count -ge 1 -and ($cbs.WindowsName -or $cbs.WindowsText)) "0x800F0922: toolkit note and Windows' own ($($cbs.WindowsName) - $($cbs.WindowsText))"
+    Assert ($cbs -and $cbs.Toolkit.Count -ge 1 -and $cbs.WindowsVia -eq 'certutil') "0x800F0922: the toolkit's note (Windows itself: '$($cbs.WindowsName)' '$($cbs.WindowsText)')"
     $av = $byIn['0xC0000005']
-    Assert ($av -and ($av.WindowsText -or $av.NtWin32 -eq 998)) "0xC0000005 explained ($(if ($av.WindowsText) { "certutil: $($av.WindowsName) $($av.WindowsText)" } else { "mapped to $($av.NtWin32): $($av.NtText)" }))"
+    Assert ($av -and (($av.WindowsName -eq 'STATUS_ACCESS_VIOLATION' -and $av.WindowsText -notmatch '%') -or $av.NtWin32 -eq 998)) "0xC0000005 explained, blanks tidied ($(if ($av.WindowsText) { "$($av.WindowsName): $($av.WindowsText)" } else { "mapped to $($av.NtWin32): $($av.NtText)" }))"
     $dm = $byIn['43']
-    Assert ($dm -and @($dm.Toolkit | Where-Object Source -eq 'Device Manager problem code').Count -and $dm.WindowsText) "code 43: Device Manager note, and Windows error 43 ($($dm.WindowsName) - $($dm.WindowsText))"
+    Assert ($dm -and @($dm.Toolkit | Where-Object Source -eq 'Device Manager problem code').Count -and -not $dm.WindowsText) "code 43: the Device Manager note, and no stray Windows message ('$($dm.WindowsText)')"
 }
 
 # ------------------------------------------------------------------------------------------------
