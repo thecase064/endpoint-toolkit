@@ -1,6 +1,6 @@
 # Shared helpers
 
-Not a tool, and not in the menu. `Helpers.ps1` holds code that several tools load, and `ErrorCodes.psd1` the error codes they explain, so each lives in one place.
+Not a tool, and not in the menu. `Helpers.ps1` holds code that several tools load, `ErrorCodes.psd1` the error codes they explain, and `ToolkitData.psd1` everything the toolkit saves on a PC, so each lives in one place.
 
 ## Helpers.ps1
 
@@ -35,3 +35,9 @@ Every error code the toolkit explains, in one data file (no code runs when it's 
 | `StopCodes` | Common blue screen stop codes: the name and the usual cause | Microsoft's bug check reference |
 
 To add a code, add a line to `Codes` with `Code` (`0x`-hex, plain digits, or text like `AADSTS50076`), `Source`, `Meaning` and `Fix`.
+
+## ToolkitData.psd1
+
+Every place the toolkit saves something on a PC, and the names it uses there, for **Toolkit cleanup** (`Remove-ToolkitData`). Data only. Each entry has a `Category` (`Reports`, `Toolkit`, `DriverBackups`, `UpdateBackups`), a `Root` (`SystemDrive`, `ProgramData`, `Windows`, `Documents`, `AppData`, `LocalAppData`, `Temp`), a `Folder`, the `Names` the toolkit creates there (PowerShell wildcards; anything else in the folder is left alone) or `Whole = $true` for a folder that's only the toolkit's, and `Empty`: folders to remove once they're empty.
+
+**When a tool starts saving somewhere new**, add it here and to the folder table in `docs/data-flow.md`. The tests fail if the two disagree, if a name would match everything, or if an `Empty` folder is a shared one (`ProgramData\Dell`, `Documents\WindowsPowerShell\Modules` and the like).

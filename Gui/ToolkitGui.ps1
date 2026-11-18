@@ -24,7 +24,7 @@ $script:GuiIconFont = 'Segoe Fluent Icons, Segoe MDL2 Assets'
 
 # Icon for a tool with no "icon" in tools.json, by category. Code points checked against Microsoft's
 # Segoe MDL2 Assets list: E7F8 laptop, E90F wrench, E9D9 diagnostic, E9F9 report, E713 gear.
-$script:GuiCategoryIcons = @{ Build = 'E7F8'; Repair = 'E90F'; Diagnose = 'E9D9'; Report = 'E9F9' }
+$script:GuiCategoryIcons = @{ Build = 'E7F8'; Repair = 'E90F'; Diagnose = 'E9D9'; Report = 'E9F9'; Toolkit = 'E713' }
 
 # Pill colours (background, text) by kind. Palette names; the tests check they exist.
 $script:GuiPillBrushes = @{
@@ -456,14 +456,16 @@ function Show-ToolkitGuiRunStatus {
     $brush = if ($result -eq 'OK') { 'OkFg' } else { 'WarnFg' }
     $Run.Row.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $brush)
     $Run.Done = $true
+    # Toolkit cleanup removed the toolkit itself: its files are gone, so this window goes too.
+    if ($Run.CloseOnSuccess -and $code -eq 0 -and $script:Gui.Window) { $script:Gui.Window.Close() }
 }
 
 function Add-ToolkitGuiRun {
-    param([Parameter(Mandatory)] $Tool, $Process)
+    param([Parameter(Mandatory)] $Tool, $Process, [switch] $CloseOnSuccess)
     $g = $script:Gui
     $row = New-ToolkitGuiText -Text '' -Wrap
     $row.Margin = New-Object System.Windows.Thickness 0, 1, 0, 1
-    $run = [pscustomobject]@{ Tool = $Tool; Process = $Process; Row = $row; Started = (Get-Date); Done = $false }
+    $run = [pscustomobject]@{ Tool = $Tool; Process = $Process; Row = $row; Started = (Get-Date); Done = $false; CloseOnSuccess = [bool]$CloseOnSuccess }
     Show-ToolkitGuiRunStatus -Run $run
     $g.C.RunsList.Children.Insert(0, $row)
     while ($g.C.RunsList.Children.Count -gt 5) { $g.C.RunsList.Children.RemoveAt($g.C.RunsList.Children.Count - 1) }
@@ -498,7 +500,7 @@ function Invoke-ToolkitGuiRun {
         Show-ToolkitGuiMessage $why
         return
     }
-    Add-ToolkitGuiRun -Tool $tool -Process $process
+    Add-ToolkitGuiRun -Tool $tool -Process $process -CloseOnSuccess:(Test-ToolkitClosesAfter -Tool $tool -Parameters $converted.Parameters)
 }
 
 function New-ToolkitGuiWindow {

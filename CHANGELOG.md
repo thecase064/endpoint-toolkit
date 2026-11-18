@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.18.0 - 2026-11-18
+
+### Added
+- **Toolkit cleanup** (`Remove-ToolkitData`, menu 33 in a new **Toolkit** section, admin). For leaving a PC as you found it. Lists everything the toolkit has saved on the PC with sizes, in four groups, and deletes the groups you tick after one more `[y/N]`. Nothing ticked: list only.
+  - **Reports and logs:** `C:\Triage` reports, build reports and logs, tool logs in ProgramData, `C:\OfficeReset` logs, device inventory, disk usage reports, Entra / Intune log bundles, M365 reports (both the redirected Documents folder and `%USERPROFILE%\Documents`, since the two reports default to different ones).
+  - **The toolkit itself:** the downloaded copies in `C:\ProgramData\EndpointToolkit` (with the Graph module cache), the installed module, saved licence names, Event triage mutes, and downloads or working files a tool left behind. Run from the toolkit window or console menu, **that closes once the removal succeeds** (`closesToolkit` in `tools.json`).
+  - **Driver backups** (`C:\DriverExport`) and **Windows Update reset backups** (`SoftwareDistribution.old-*`, `catroot2.old-*`): their own options, off by default, with a warning.
+  - **Only the toolkit's own files**, matched by the names the tools use, from one list (`Tools\Shared\ToolkitData.psd1`). Anything else in those folders is listed as left alone; a folder goes only once it's empty; links are removed as links, never followed; shared parents (`ProgramData\Dell`, `Documents\WindowsPowerShell\Modules`) are never removed. It steps out of the toolkit's folder before deleting (Windows won't delete a folder a process is in). Needs admin for `C:\` and ProgramData; `-Yes` for the RMM, and a run that can't ask deletes nothing. Exit 0 done, 1 something couldn't be deleted, 2 you said no.
+- `docs/data-flow.md`: a Toolkit cleanup diagram, and the folder table now also lists the installed module, Windows Update reset's old folders and the unelevated Graph module cache.
+
+### Fixed
+- **A missing answer always reads as no.** With nobody to answer (input closed, or piped input used up) `Read-Host` returns nothing at all, and PowerShell's `-notmatch` on that is empty, so `if ($answer -notmatch '^y')` treats it as a yes. Found while testing the cleanup, then checked everywhere: the console menu's `Run it? [y/N]` could run a tool when piped input ran out right after its number, and the Exchange + Planner report's "Correct tenant?" could pass unanswered. Every `Read-Host` answer is now made a string first (Performance check, Old profile cleanup and the OEM updater already did, or tested it safely).
+
+### Tests
+- Toolkit cleanup: 42 checks with a harness that builds a fake PC holding every file the tools write (their real name formats) and things that must survive (your notes in `C:\Triage`, a spreadsheet in `M365Reports`, Dell's own folder, other modules, someone else's temp files, the live `SoftwareDistribution` and `catroot2`, a driver folder named otherwise, links pointing outside). List only, no, no answer at all, yes, each group alone, not admin (refused for C:\ and ProgramData, fine for the account's own files), nothing there, `-Quiet`, `-PassThru`. Run under UTC, New York and Tokyo. Sixteen key behaviours broken on purpose, each caught.
+- **New repo tests:** every place in `ToolkitData.psd1` follows the rules and matches the data-flow folder table both ways; the cleanup reads its list and steps out of the toolkit's folder before deleting; `closesToolkit` names one of the tool's switches; the console menu closes after a successful removal and not otherwise (run for real with a fixture); on Windows the window closes only after a removal that exited 0; every `Read-Host` answer in the shipped scripts is a string.
+
 ## 1.17.0 - 2026-11-18
 
 ### Changed

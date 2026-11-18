@@ -113,7 +113,7 @@ function Read-YesNo {
     # Never blocks an unattended run: no console, no question, the answer is no.
     param([string] $Question)
     if (-not $Interactive) { return $false }
-    try { $a = Read-Host "    $Question [y/N]" } catch { return $false }
+    try { $a = [string](Read-Host "    $Question [y/N]") } catch { return $false }
     "$a".Trim() -match '^(y|yes)$'
 }
 

@@ -2,7 +2,7 @@
 
 Reports save to the PC. Only three tools sign into Microsoft 365: Intune primary user (also run by New device setup), M365 licence report, and Exchange + Planner usage.
 
-For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.17.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
+For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.18.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
 
 ```mermaid
 flowchart LR
@@ -28,6 +28,7 @@ Arrows point the way information flows. A two-way arrow means the tool also chan
 - [Repair](#repair)
 - [Diagnose](#diagnose)
 - [Report (Microsoft 365 tenant)](#report-microsoft-365-tenant)
+- [Toolkit cleanup](#toolkit-cleanup)
 - [Every folder it writes to on the PC](#every-folder-it-writes-to-on-the-pc)
 
 ## Starting the toolkit
@@ -212,6 +213,22 @@ flowchart LR
     P2T --> P2O["Documents\M365Reports\M365_Usage_#lt;tenant#gt;_<br/>#lt;time#gt;.csv<br/>(+ .xlsx with ImportExcel)"]:::out
 ```
 
+## Toolkit cleanup
+
+```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 400}}}%%
+flowchart LR
+    classDef tool fill:#CFEBC8,stroke:#5E9E55,color:#1b1b1b
+    classDef local fill:#FFFFFF,stroke:#9A9A9A,color:#1b1b1b
+    classDef out fill:#FFF0A6,stroke:#C9AF2E,color:#1b1b1b
+    classDef net fill:#CFE2FA,stroke:#5F8FCB,color:#1b1b1b
+    classDef auth fill:#FFD8BE,stroke:#D98A57,color:#1b1b1b
+    T1T("<b>Toolkit cleanup</b><br/>Admin. Lists what the toolkit saved, with<br/>sizes#59; deletes only the ticked groups<br/>after one more yes"):::tool
+    T1L["Tools\Shared\ToolkitData.psd1: the names<br/>the toolkit creates, folder by folder"]:::local --> T1T
+    T1T <--> T1D["Every folder in the table below: only the<br/>toolkit's own files#59; a folder goes once it's<br/>empty. Driver backups and Windows Update<br/>reset backups only when ticked"]:::local
+    T1T --> T1O["Console only. Removing the toolkit itself<br/>closes the toolkit window or menu"]:::out
+```
+
 ## Every folder it writes to on the PC
 
 `<PC>` is the computer name and `<time>` a timestamp. Folders are created on first use.
@@ -222,7 +239,7 @@ flowchart LR
 | `C:\ProgramData\DeploymentMaster\` | New device setup (Reports, Logs) |
 | `C:\ProgramData\McAfeeRemoval\` | McAfee removal |
 | `C:\ProgramData\Debloat\` | OEM debloat |
-| `C:\ProgramData\OEMUpdates\ + Dell\OEMUpdates\` | OEM drivers + BIOS |
+| `C:\ProgramData\OEMUpdates\`, `C:\ProgramData\Dell\OEMUpdates\` | OEM drivers + BIOS |
 | `C:\ProgramData\AppDeploy\Logs\` | Chrome + Adobe Reader |
 | `C:\ProgramData\OfficeActivationReset\` | Office activation reset |
 | `C:\ProgramData\WindowsUpdateReset\` | Windows Update reset |
@@ -234,8 +251,12 @@ flowchart LR
 | `C:\EntraIntuneHealth\` | Entra / Intune health (-CollectLogs) |
 | `Documents\M365Reports\` | M365 licence report, Exchange + Planner usage |
 | `%APPDATA%\EventTriage\` | Event triage (mutes) |
-| `%LOCALAPPDATA%\EndpointToolkit\` | M365 licence report, Exchange + Planner usage (`LicenseNames.csv`, Microsoft's product names, refreshed at most weekly) |
+| `%LOCALAPPDATA%\EndpointToolkit\` | M365 licence report, Exchange + Planner usage (`LicenseNames.csv`, Microsoft's product names, refreshed at most weekly), Intune primary user (_modules, when not run as admin) |
+| `Documents\WindowsPowerShell\Modules\EndpointToolkit\`, `Documents\PowerShell\Modules\EndpointToolkit\` | Launcher with -Install (the installed module) |
+| `C:\Windows\SoftwareDistribution.old-<time>\`, `C:\Windows\System32\catroot2.old-<time>\` | Windows Update reset (the old folders it sets aside, its undo) |
 | `%TEMP%` | Window run options, Chrome + Reader downloads, Driver import unzip |
-| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, Old user profile cleanup, Audio check, Error code explainer, BitLocker check, Driver import |
+| Console only (no file: keep a transcript) | Intune primary user, Windows repair, Teams cache, Print spooler, Teams add-in fix, OneDrive reset, Time sync fix, Old user profile cleanup, Audio check, Error code explainer, BitLocker check, Driver import, Toolkit cleanup |
 
-`Documents` is the Documents folder of the account running the tool, which follows OneDrive redirection.
+`Documents` is the Documents folder of the account running the tool, which follows OneDrive redirection. The M365 licence report's default is `%USERPROFILE%\Documents\M365Reports`, which differs from it when OneDrive redirects Documents; Toolkit cleanup checks both.
+
+**Toolkit cleanup** (menu 33) finds and removes all of these. Its list is `Tools\Shared\ToolkitData.psd1`, which the tests keep in step with this table: a tool that starts writing somewhere new goes in both.

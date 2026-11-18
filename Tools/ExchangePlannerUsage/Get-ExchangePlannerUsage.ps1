@@ -206,7 +206,7 @@ try {
 
     $org        = (Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/organization?$select=displayName').value[0]
     $tenantName = $org.displayName
-    if ((Read-Host "Connected to '$tenantName'. Correct tenant? (Y/N)") -notmatch '^[Yy]') { throw 'Aborted - wrong tenant.' }
+    if (-not ([string](Read-Host "Connected to '$tenantName'. Correct tenant? (Y/N)") -match '^[Yy]')) { throw 'Aborted - wrong tenant.' }
 
     Write-Step 'Connecting to Exchange Online'
     $exo = @{ ShowBanner = $false }
@@ -220,7 +220,7 @@ try {
         $rs = Invoke-MgGraphRequest -Method GET -Uri 'https://graph.microsoft.com/v1.0/admin/reportSettings'
         if ($rs.displayConcealedNames) {
             Write-Warning 'Usage reports show concealed (hashed) names, so Exchange data can''t be matched to users.'
-            if ($TempUnconcealReports -or (Read-Host 'Temporarily un-conceal for this run and restore afterwards? (Y/N)') -match '^[Yy]') {
+            if ($TempUnconcealReports -or [string](Read-Host 'Temporarily un-conceal for this run and restore afterwards? (Y/N)') -match '^[Yy]') {
                 Set-ReportConcealment $false
                 $concealFlip = $true
                 Write-Host 'Concealment OFF for now - it gets switched back on after the Exchange pull.' -ForegroundColor Yellow

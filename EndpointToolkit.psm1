@@ -77,8 +77,10 @@ function ConvertTo-ToolkitArgumentString {
 }
 
 function Read-ToolkitInput {
+    # Always a string: with nobody to answer (input closed or piped in and used up) Read-Host returns
+    # nothing at all, and "nothing -notmatch '^y'" is empty, which reads as a yes. '' reads as no.
     param([string] $Prompt)
-    Read-Host -Prompt $Prompt
+    [string](Read-Host -Prompt $Prompt)
 }
 
 function Test-ToolkitStreamOutput {
@@ -223,6 +225,16 @@ function Show-ToolkitBrief {
     if ($q -eq 1) { Write-Host '   Asks 1 question first (Enter takes the default).' -ForegroundColor DarkGray }
     elseif ($q -gt 1) { Write-Host "   Asks $q questions first (Enter takes the default)." -ForegroundColor DarkGray }
     Write-Host ''
+}
+
+function Test-ToolkitClosesAfter {
+    # True when this run removes the toolkit itself (tools.json "closesToolkit" names the switch that does
+    # it, e.g. Toolkit cleanup's -Toolkit), so the window or menu should close once it succeeds.
+    param([Parameter(Mandatory)] $Tool, $Parameters)
+    if (-not $Tool.closesToolkit -or -not $Parameters) { return $false }
+    $name = [string]$Tool.closesToolkit
+    $has = if ($Parameters -is [System.Collections.IDictionary]) { $Parameters.Contains($name) } else { $null -ne $Parameters.PSObject.Properties[$name] }
+    $has -and [bool]$Parameters[$name]
 }
 
 function Get-ToolkitRunResult {
@@ -490,12 +502,18 @@ function Show-EndpointToolkit {
 
         $options = Read-ToolkitToolOption -Tool $tool
         Write-Host ''
+        $output = $null
         try {
             $output = Invoke-ToolkitTool -Id $tool.id -Parameters $options
             if ($tool.mode -eq 'process' -and $output) { $output | Out-String | Write-Host }
         }
         catch {
             Write-Host "  Failed: $($_.Exception.Message)" -ForegroundColor Red
+        }
+        $last = @($output) | Select-Object -Last 1
+        if ((Test-ToolkitClosesAfter -Tool $tool -Parameters $options) -and $last -and $last.PSObject.Properties['ExitCode'] -and $last.ExitCode -eq 0) {
+            Write-Host "`n  The toolkit has been removed from this PC, so the menu closes. Run the one-liner to use it again." -ForegroundColor Green
+            return
         }
         [void](Read-ToolkitInput "`n  Enter to return to the menu")
     }

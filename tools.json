@@ -4,7 +4,8 @@
     "Build",
     "Repair",
     "Diagnose",
-    "Report"
+    "Report",
+    "Toolkit"
   ],
   "tools": [
     {
@@ -907,6 +908,55 @@
           "param": "SkipSignInLogs",
           "type": "switch",
           "prompt": "Skip the Planner sign-in log scan (faster on big tenants)?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "toolkit-cleanup",
+      "name": "Toolkit cleanup (remove its data)",
+      "category": "Toolkit",
+      "icon": "E894",
+      "path": "Tools/ToolkitCleanup/Remove-ToolkitData.ps1",
+      "command": "Remove-ToolkitData",
+      "description": "Lists everything the toolkit has saved on this PC with sizes (reports and logs, its own downloaded copies, installed module, caches and settings, driver backups, Windows Update reset backups) and deletes the groups you tick after one more yes. Only the toolkit's own files, matched by name; anything else in those folders is left alone. Removing the toolkit itself closes the toolkit window or menu afterwards.",
+      "brief": [
+        "Lists everything the toolkit has saved on this PC, with sizes: reports and logs, its own",
+        "downloaded copies, installed module and settings, driver backups and Windows Update backups.",
+        "Read-only unless you tick a group: then it deletes those after one more yes. Toolkit files only.",
+        "Removing the toolkit itself closes this window when it's done. Nothing ticked: list only."
+      ],
+      "admin": true,
+      "readOnly": "default",
+      "mode": "child",
+      "successCodes": [
+        0,
+        2
+      ],
+      "closesToolkit": "Toolkit",
+      "prompts": [
+        {
+          "param": "Reports",
+          "type": "switch",
+          "prompt": "Delete the reports and logs the tools saved?",
+          "default": false
+        },
+        {
+          "param": "Toolkit",
+          "type": "switch",
+          "prompt": "Remove the toolkit itself? The toolkit closes when it's done",
+          "default": false
+        },
+        {
+          "param": "DriverBackups",
+          "type": "switch",
+          "prompt": "Also delete driver backups (C:\\DriverExport)?",
+          "default": false
+        },
+        {
+          "param": "UpdateBackups",
+          "type": "switch",
+          "prompt": "Also delete Windows Update reset's old folders (its undo)?",
           "default": false
         }
       ]

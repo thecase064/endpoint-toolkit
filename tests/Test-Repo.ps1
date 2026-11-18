@@ -236,6 +236,43 @@ Assert ($got.Path -eq 'C:\Req Dir') "menu: required prompt re-asked until answer
 Assert ($prompts.IndexOf('Run it? [y/N]') -ge 0 -and $prompts.IndexOf('Run it? [y/N]') -lt $prompts.IndexOf('Choice')) 'menu: "Run it?" is asked before any of the tool''s options'
 Assert ((& $mod { $script:TestAnswers.Count }) -eq 0) 'menu: consumed every answer and quit cleanly'
 Remove-Item -LiteralPath $outFile -ErrorAction SilentlyContinue
+
+# A tool that removes the toolkit itself (tools.json "closesToolkit", like Toolkit cleanup's -Toolkit):
+# the menu closes after a successful run with that option, and carries on otherwise.
+& $mod {
+    $script:Tools += [pscustomobject]@{
+        id = 'fixture-closer'; name = 'Fixture (closer)'; category = 'Report'; mode = 'child'; admin = $false
+        path = 'tests/fixtures/Echo-Args.ps1'; description = 'test'; successCodes = @(0, 77); closesToolkit = 'Flag'
+        brief = @('Fixture that removes the toolkit.')
+        prompts = @(
+            [pscustomobject]@{ param = 'Flag'; type = 'switch'; prompt = 'Remove the toolkit?'; default = $false }
+            [pscustomobject]@{ param = 'Zero'; type = 'switch'; prompt = 'Succeed?'; default = $false }
+        )
+    }
+}
+$closerNumber = (@(& $mod { @(foreach ($c in @($script:Manifest.categories)) { $script:Tools | Where-Object { $_.category -eq $c } }).id }).IndexOf('fixture-closer')) + 1
+foreach ($case in @(
+        @{ Answers = @("$closerNumber", 'y', 'y', 'y'); Closes = $true; Name = 'removal ticked and it succeeded: the menu closes' }
+        @{ Answers = @("$closerNumber", 'y', 'n', 'y', '', 'q'); Closes = $false; Name = 'removal not ticked: back to the menu' }
+        @{ Answers = @("$closerNumber", 'y', 'y', 'n', '', 'q'); Closes = $false; Name = 'removal ticked but it failed: back to the menu' })) {
+    Use-MenuAnswer $case.Answers
+    $menuOut = & { Show-EndpointToolkit } 6>&1 | Out-String
+    $left = & $mod { $script:TestAnswers.Count }
+    $closed = $menuOut -match 'has been removed from this PC, so the menu closes'
+    Assert ($left -eq 0 -and $closed -eq $case.Closes) "menu: $($case.Name)"
+}
+& $mod { $script:Tools = @($script:Tools | Where-Object { $_.id -ne 'fixture-closer' }) }
+$ctTool = [pscustomobject]@{ closesToolkit = 'Toolkit' }
+$ct = & $mod { param($t)
+    @(  (Test-ToolkitClosesAfter -Tool $t -Parameters ([ordered]@{ Toolkit = $true })),
+        (Test-ToolkitClosesAfter -Tool $t -Parameters @{ Toolkit = $true }),
+        (Test-ToolkitClosesAfter -Tool $t -Parameters ([ordered]@{ Toolkit = $false })),
+        (Test-ToolkitClosesAfter -Tool $t -Parameters ([ordered]@{ Reports = $true })),
+        (Test-ToolkitClosesAfter -Tool $t -Parameters $null),
+        (Test-ToolkitClosesAfter -Tool ([pscustomobject]@{ id = 'x' }) -Parameters @{ Toolkit = $true })) -join ','
+} $ctTool
+Assert ($ct -eq 'True,True,False,False,False,False') "closes only when the tool's closesToolkit option is set ($ct)"
+Remove-Item -LiteralPath $outFile -ErrorAction SilentlyContinue
 Remove-Item Env:\ETK_TEST_OUT
 
 # ------------------------------------------------------------------------------------------------
@@ -472,6 +509,20 @@ else {
         $r.NoneRun  = [string]$g.C.RunButton.Visibility
         $g.C.SearchBox.Text = ''
         $r.AllShown = @($g.Items | Where-Object { [string]$_.Item.Visibility -eq 'Visible' }).Count
+
+        # A finished run closes the window only when it removed the toolkit itself and exited 0.
+        $realWindow = $g.Window
+        $g.Window = [pscustomobject]@{} | Add-Member -MemberType ScriptMethod -Name Close -Value { $script:TestClosed++ } -PassThru
+        $script:TestClosed = 0
+        $closes = foreach ($case in @(@{ C = $false; X = 0 }, @{ C = $true; X = 2 }, @{ C = $true; X = 1 }, @{ C = $true; X = 0 })) {
+            $before = $script:TestClosed
+            $fake = [pscustomobject]@{ Tool = $g.Current; Process = [pscustomobject]@{ HasExited = $true; ExitCode = $case.X }
+                                      Row = (New-ToolkitGuiText -Text ''); Started = (Get-Date); Done = $false; CloseOnSuccess = $case.C }
+            Show-ToolkitGuiRunStatus -Run $fake
+            [int]($script:TestClosed - $before)
+        }
+        $r.Closes = $closes -join ','
+        $g.Window = $realWindow
         $w.Close()
         [pscustomobject]$r
     }
@@ -492,6 +543,7 @@ else {
     Assert ($ui.SearchShown -eq 1 -and $ui.SearchPick -eq 'print-spooler') "search narrows the list and picks the match ($($ui.SearchShown) shown)"
     Assert ($ui.NoneName -match 'No tools match' -and $ui.NoneRun -eq 'Collapsed') 'no matches: says so, and no Run button'
     Assert ($ui.AllShown -eq $listed.Count) 'clearing the search shows everything again'
+    Assert ($ui.Closes -eq '0,0,0,1') "a finished run closes the window only after removing the toolkit with exit 0 ($($ui.Closes))"
 }
 
 # ------------------------------------------------------------------------------------------------
@@ -613,6 +665,84 @@ else {
     }
     finally { Remove-Item -LiteralPath $licCache -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+# ------------------------------------------------------------------------------------------------
+Write-Host "`nToolkit cleanup: what the toolkit saves, and where" -ForegroundColor Cyan
+# Tools\Shared\ToolkitData.psd1 is the cleanup's whole idea of what's the toolkit's. Every place must be a
+# real folder in the data-flow table (and the other way round), and no entry may reach beyond its folder.
+$tkData = Import-PowerShellDataFile -LiteralPath (Join-Path $root 'Tools/Shared/ToolkitData.psd1')
+$forbiddenEmpty = @('', 'Dell', 'Microsoft', 'WindowsPowerShell', 'WindowsPowerShell\Modules', 'PowerShell', 'PowerShell\Modules', 'System32', 'Users')
+$bad = foreach ($loc in $tkData.Locations) {
+    $id = "$($loc.Root)\$($loc.Folder)"
+    if ($loc.Category -notin 'Reports', 'Toolkit', 'DriverBackups', 'UpdateBackups') { "$id category '$($loc.Category)'" }
+    if ($loc.Root -notin 'SystemDrive', 'ProgramData', 'Windows', 'Documents', 'AppData', 'LocalAppData', 'Temp') { "$id root '$($loc.Root)'" }
+    if (-not $loc.Tools) { "$id no Tools" }
+    if ("$($loc.Folder) $(@($loc.Names) -join ' ') $(@($loc.Empty) -join ' ')" -match '\.\.') { "$id has '..'" }
+    if ($loc.Whole) {
+        if (-not $loc.Folder) { "${id}: Whole on a root" }
+        if ($loc.Names) { "${id}: Whole and Names" }
+    }
+    else {
+        if (-not @($loc.Names).Count) { "${id}: no Names" }
+        foreach ($n in @($loc.Names)) { if ((($n -split '[\\/]')[-1]) -match '^[\*\?]+$') { "${id}: '$n' matches everything" } }
+    }
+    foreach ($e in @($loc.Empty | Where-Object { $null -ne $_ })) {
+        if ($forbiddenEmpty -contains [string]$e) { "${id}: Empty '$e' is a shared folder" }
+        $f = [string]$loc.Folder
+        $related = ($e -eq $f) -or ($f -and $e.StartsWith("$f\", 'OrdinalIgnoreCase')) -or ($f -and $f.StartsWith("$e\", 'OrdinalIgnoreCase')) -or (-not $f)
+        if (-not $related) { "${id}: Empty '$e' isn't its folder, inside it or above it" }
+    }
+}
+Assert (-not $bad) "every place follows the rules$(if ($bad) { ': ' + (@($bad) -join '; ') })"
+foreach ($cat in 'Reports', 'Toolkit', 'DriverBackups', 'UpdateBackups') {
+    Assert (@($tkData.Locations | Where-Object Category -eq $cat).Count -gt 0) "has places for $cat"
+}
+$dfText = Get-Content -LiteralPath (Join-Path $root 'docs/data-flow.md') -Raw
+$dfTable = [regex]::Match($dfText, '(?s)## Every folder it writes to on the PC\s+(.*?)(\r?\n\r?\n[^|]|\z)').Groups[1].Value
+$dfPlaces = @(foreach ($line in ($dfTable -split '\r?\n' | Where-Object { $_ -match '^\| `' })) {
+    foreach ($m in [regex]::Matches(($line -split '\|')[1], '`([^`]+)`')) {
+        $p = $m.Groups[1].Value.TrimEnd('\')
+        $parts = @($p -split '\\')
+        if ($parts[-1] -match '<') { $parts = @($parts | Select-Object -First ($parts.Count - 1)) }
+        $p = $parts -join '\'
+        switch -Regex ($p) {
+            '^%TEMP%$'                 { 'Temp\'; break }
+            '^%APPDATA%\\(.+)$'        { "AppData\$($Matches[1])"; break }
+            '^%LOCALAPPDATA%\\(.+)$'   { "LocalAppData\$($Matches[1])"; break }
+            '^Documents\\(.+)$'        { "Documents\$($Matches[1])"; break }
+            '^C:\\ProgramData\\(.+)$'  { "ProgramData\$($Matches[1])"; break }
+            '^C:\\Windows(\\(.+))?$'   { "Windows\$($Matches[2])"; break }
+            '^C:\\(.+)$'               { "SystemDrive\$($Matches[1])"; break }
+            default                    { "unreadable: $p" }
+        }
+    }
+})
+$dataPlaces = @($tkData.Locations | ForEach-Object { "$($_.Root)\$($_.Folder)" } | Select-Object -Unique)
+$notInData = @($dfPlaces | Where-Object { $dataPlaces -notcontains $_ })
+$notInDoc  = @($dataPlaces | Where-Object { $dfPlaces -notcontains $_ })
+Assert ($dfPlaces.Count -ge 20 -and -not $notInData.Count) "every folder in the data-flow table is in ToolkitData.psd1 ($($dfPlaces.Count) read$(if ($notInData) { '; missing: ' + ($notInData -join ', ') }))"
+Assert (-not $notInDoc.Count) "every place in ToolkitData.psd1 is in the data-flow table$(if ($notInDoc) { ': ' + ($notInDoc -join ', ') })"
+
+$tcCode = Get-Content -LiteralPath (Join-Path $root 'Tools/ToolkitCleanup/Remove-ToolkitData.ps1') -Raw
+$iData = $tcCode.IndexOf('Import-PowerShellDataFile'); $iCwd = $tcCode.IndexOf('[Environment]::CurrentDirectory = '); $iDel = $tcCode.IndexOf('Remove-Entry -Item $i.Item')
+Assert ($iData -gt 0 -and $iCwd -gt $iData -and $iDel -gt $iCwd) 'cleanup reads its list first, then steps out of the toolkit''s folder (Windows won''t delete a folder a process is in), then deletes'
+foreach ($t in @($tools | Where-Object { $_.closesToolkit })) {
+    $p = @($t.prompts | Where-Object { $_.param -eq $t.closesToolkit })
+    Assert ($p.Count -eq 1 -and $p[0].type -eq 'switch' -and (Get-ScriptParameterName (Join-Path $root $t.path)) -contains $t.closesToolkit) "[$($t.id)] closesToolkit names one of its switch options ($($t.closesToolkit))"
+}
+Assert ($guiCode -match 'Add-ToolkitGuiRun -Tool \$tool -Process \$process -CloseOnSuccess:\(Test-ToolkitClosesAfter -Tool \$tool -Parameters \$converted\.Parameters\)') 'the window remembers which runs remove the toolkit'
+
+# Every Read-Host answer is forced to a string: with nobody to answer, Read-Host returns nothing at all, and
+# "nothing -notmatch '^y'" is empty (false), so a [y/N] check would read it as a yes.
+$rhBad = foreach ($f in @($scripts | Where-Object { $_.Extension -in '.ps1', '.psm1' -and $_.FullName -notmatch '[\\/]tests[\\/]' })) {
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$null)
+    foreach ($c in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'Read-Host' }, $true)) {
+        $conv = $c.Parent.Parent.Parent
+        $ok = $conv -is [System.Management.Automation.Language.ConvertExpressionAst] -and $conv.Type.TypeName.Name -in 'string', 'void'
+        if (-not $ok) { '{0}:{1}' -f $f.FullName.Substring($root.Length + 1), $c.Extent.StartLineNumber }
+    }
+}
+Assert (-not $rhBad) "every Read-Host answer is [string] (or [void])$(if ($rhBad) { ': ' + (@($rhBad) -join ', ') })"
 
 # ------------------------------------------------------------------------------------------------
 Write-Host "`nLaunchers" -ForegroundColor Cyan

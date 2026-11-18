@@ -5,7 +5,7 @@
 A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, OneDrive, printing, Office activation, Windows Update, the clock, old profiles), diagnose it (why it's slow, why it isn't updating, no sound, what an error code means, Entra, Intune and BitLocker health), find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
-┌ Endpoint Toolkit v1.17.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+┌ Endpoint Toolkit v1.18.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
 │ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
 │ Build                       │                                                                                  │
 │   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
@@ -34,7 +34,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.17.0                  thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.18.0                  thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -78,6 +78,9 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
     31  M365 licence report (Excel)
     32  Exchange + Planner usage report
 
+   TOOLKIT
+    33  Toolkit cleanup (remove its data)             admin
+
      Q  Quit
 ```
 
@@ -116,7 +119,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.17.0` (add `-Console` for the console menu) |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.18.0` (add `-Console` for the console menu) |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |
@@ -156,6 +159,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 | | [Event triage](Tools/EventTriage) | WPF front end that groups event logs by provider + ID, mutes known noise, pulls context around an event and builds a redacted AI troubleshooting prompt. Local or remote. | `Start-EventTriage` |
 | **Report** | [M365 licence report](Tools/M365LicenseReport) | Multi-tenant Microsoft Graph report to Excel: users, licence detail, SKU summary, pivot, reclaim candidates, unlicensed users. Licences carry Microsoft's own product names (its published list, downloaded at most weekly). | `Get-M365LicenseReport` |
 | | [Exchange + Planner usage](Tools/ExchangePlannerUsage) | Who's licensed for Exchange or Planner but not using them: mail activity, Planner audit events and app sign-ins per user. Handles concealed report names and GDAP. Licences by product name, with the SKU part numbers alongside. | `Get-ExchangePlannerUsage` |
+| **Toolkit** | [Toolkit cleanup](Tools/ToolkitCleanup) | Lists everything the toolkit has saved on the PC, with sizes: reports and logs, its own downloaded copies, installed module, caches and settings, driver backups and Windows Update reset backups. Deletes only the groups you tick, after one more yes, and only the toolkit's own files (matched by name); anything else in those folders stays. Removing the toolkit itself closes the window or menu when it's done. | `Remove-ToolkitData` |
 
 Each folder has the tool's own guide.
 
@@ -182,6 +186,7 @@ Get-DiskUsageReport -Path D:\ -TopFolders 50 -PassThru
 Get-M365LicenseReport -TenantId contoso.onmicrosoft.com -ClientName 'Contoso' -IncludeLastSignIn
 Export-DeviceDriver -Destination E:\Drivers -Zip
 Invoke-NewDeviceSetup -SkipReboot
+Remove-ToolkitData -Reports -Toolkit     # lists, asks, then removes the reports and the toolkit itself
 
 Get-ToolkitTool | Format-Table Id, Name, Admin, Mode
 Get-Help Get-DiskUsageReport -Full
@@ -257,6 +262,7 @@ Prompt types: `switch` (y/n), `string` (blank = skip), `choice` (numbered option
   | M365 licence report | Microsoft Graph and ImportExcel modules from the PowerShell Gallery | Only with `-InstallMissingModules` |
   | M365 licence report, Exchange + Planner usage | Microsoft's list of licence product names (a CSV) from download.microsoft.com, at most once a week, saved to `%LOCALAPPDATA%\EndpointToolkit\` | Data only, never run. Must read as Microsoft's list (its columns, at least 50 names, under 20 MB) or it's thrown away and the saved copy is used. `-SkipNameDownload` skips it |
 - **Where everything goes.** [docs/data-flow.md](docs/data-flow.md) has a diagram for every tool: what it reads on the PC, what it downloads or signs into, what it runs and where it saves. It ends with a list of every folder the toolkit writes to.
+- **Leaving nothing behind.** **Toolkit > Toolkit cleanup** removes the reports, logs and the toolkit itself from a PC when the work's done (driver backups and Windows Update reset backups only when ticked). It works from the same list as the data-flow page, kept in step by the tests.
 
 ## Building an .exe (optional)
 
