@@ -475,6 +475,27 @@ else {
 }
 
 # ------------------------------------------------------------------------------------------------
+Write-Host "`nAudio check: Core Audio code (compiled for real on Windows)" -ForegroundColor Cyan
+$audioAst = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'Tools/AudioCheck/Get-AudioStatus.ps1'), [ref]$null, [ref]$null)
+$csAssign = $audioAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -eq '$CoreAudioCs' }, $true) | Select-Object -First 1
+$cs = if ($csAssign) { [string]$csAssign.Right.Expression.Value } else { '' }
+Assert ($cs -match 'namespace EtkCoreAudio' -and $cs -notmatch '\$"|\?\.|=>|nameof\(|out var ') 'the C# is there and sticks to C# 5 (Windows PowerShell 5.1 compiles it with the old compiler)'
+if ($env:OS -ne 'Windows_NT') {
+    Write-Host '  SKIP  compiling it needs Windows; CI runs this part' -ForegroundColor DarkGray
+}
+else {
+    $compiled = $null
+    try { Add-Type -TypeDefinition $cs.Replace('namespace EtkCoreAudio', 'namespace EtkCoreAudioRepoTest') -Language CSharp -ErrorAction Stop; $compiled = 'EtkCoreAudioRepoTest.Reader' -as [type] }
+    catch { Write-Host "  $($_.Exception.Message)" -ForegroundColor Red }
+    Assert ($null -ne $compiled) "it compiles on PowerShell $($PSVersionTable.PSVersion.Major)"
+    if ($compiled) {
+        $v = $null; $threw = $null
+        try { $v = $compiled::Volume('{0.0.0.00000000}.{00000000-0000-0000-0000-000000000000}') } catch { $threw = $_.Exception.Message }
+        Assert (-not $threw -and $v -and $v.Error) "a device that doesn't exist comes back as an error, not a crash ($(if ($threw) { $threw } else { $v.Error }))"
+    }
+}
+
+# ------------------------------------------------------------------------------------------------
 Write-Host "`nLaunchers" -ForegroundColor Cyan
 Assert ((Get-ScriptParameterName (Join-Path $root 'install.ps1')) -contains 'Console') 'install.ps1 has -Console'
 Assert ((Get-ScriptParameterName (Join-Path $root 'Start-Toolkit.ps1')) -contains 'Console') 'Start-Toolkit.ps1 has -Console'
