@@ -2,7 +2,7 @@
 
 Reports save to the PC. Only three tools sign into Microsoft 365: Intune primary user (also run by New device setup), M365 licence report, and Exchange + Planner usage.
 
-For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.16.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
+For each tool, this page shows where it gets information or signs in, what it runs, and where it saves. It's written from the scripts as of v1.17.0. If a tool's paths, downloads or sign-ins change, update this page in the same commit.
 
 ```mermaid
 flowchart LR

@@ -357,6 +357,26 @@ if ($env:OS -ne 'Windows_NT') {
     Assert ($fallback -match 'No desktop here' -and $fallback -match 'ENDPOINT TOOLKIT v') 'with no desktop, the window falls back to the console menu'
 }
 
+# The PowerShell window hides while the toolkit window is open and always comes back (even if the window
+# closes with an error). On Windows the real user32 code is compiled and called; anywhere else it must
+# quietly do nothing.
+Assert ($guiCode -match '\$console = Hide-ToolkitConsole\s+try \{ \[void\]\$window\.ShowDialog\(\) \}\s+finally \{ Restore-ToolkitConsole -Handle \$console \}') 'console hidden around ShowDialog, restored in finally'
+$hc = & $mod {
+    $r = [pscustomobject]@{ Error = $null; Hidden = $false; Type = $false }
+    try {
+        $h = Hide-ToolkitConsole
+        $r.Hidden = $null -ne $h
+        Restore-ToolkitConsole -Handle $h
+        $r.Type = [bool]('EtkConsoleWindow' -as [type])
+    }
+    catch { $r.Error = $_.Exception.Message }
+    $r
+}
+Assert (-not $hc.Error) "hiding / restoring the console never throws$(if ($hc.Error) { ": $($hc.Error)" })"
+if ($env:OS -eq 'Windows_NT' -and $Host.Name -eq 'ConsoleHost') {
+    Assert $hc.Type "the console-window code compiles on Windows (hid a window: $($hc.Hidden), restored straight away)"
+}
+
 # ------------------------------------------------------------------------------------------------
 Write-Host "`nWindow: runs (each tool in its own console, options passed by file + hash)" -ForegroundColor Cyan
 $env:ETK_TEST_OUT = $outFile

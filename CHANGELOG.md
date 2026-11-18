@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.17.0 - 2026-11-18
+
+### Changed
+- **The PowerShell window gets out of the way.** After `irm ... | iex`, `etk` or `Launch-Toolkit.cmd`, the PowerShell window the toolkit window was started from is **hidden while the toolkit is open** and **comes back when you close it**. Its prompt is busy until then anyway. In **Windows Terminal** it's minimised instead (Windows Terminal can't hide a single tab, so the whole Terminal window minimises), and restored afterwards.
+  - It always comes back, even if the toolkit window closes with an error (the error is still shown).
+  - Left alone when it's already hidden or minimised (an RMM shell, a shortcut that starts minimised), in VS Code's terminal and the ISE, and wherever the console menu opens instead of the window (remote sessions, Server Core). Tool runs still open in their own PowerShell windows, as before.
+  - Uses Windows' own window calls (`GetConsoleWindow`, `ShowWindow`), compiled when the toolkit window opens. If that's blocked (Constrained Language Mode), the window simply stays visible as before.
+
+### Tests
+- 20 checks with a harness faking Windows' window calls: the classic console (hidden, then shown), Windows Terminal (minimised, then restored, not just shown), already hidden, already minimised, no console, VS Code, another host, the calls failing; and the toolkit window itself: hidden while open, back after, back after an error, never hidden when the window can't open. The real code compiles and fails safe off Windows. Twelve key behaviours broken on purpose, each caught.
+- **New repo tests:** the hide / restore wraps the window with the restore in a `finally`; hiding and restoring never throws; on Windows (CI) the real code compiles and runs under 5.1 and 7.
+
 ## 1.16.0 - 2026-11-18
 
 ### Changed

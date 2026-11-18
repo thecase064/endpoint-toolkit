@@ -680,6 +680,60 @@ function New-ToolkitGuiWindow {
     $window
 }
 
+# ------------------------------------------------------------------------------------------------
+#  The PowerShell window behind the toolkit window
+# ------------------------------------------------------------------------------------------------
+
+function Get-ToolkitConsoleWindow {
+    # The console window this PowerShell runs in, or [IntPtr]::Zero when there's no real one to hide:
+    # another host (ISE, VS Code's terminal), no console at all, or Windows' API can't be called
+    # (Constrained Language Mode, not Windows).
+    if ($Host.Name -ne 'ConsoleHost' -or $env:TERM_PROGRAM -eq 'vscode') { return [IntPtr]::Zero }
+    try {
+        if (-not ('EtkConsoleWindow' -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class EtkConsoleWindow {
+    [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool IsIconic(IntPtr hWnd);
+}
+"@
+        }
+        [EtkConsoleWindow]::GetConsoleWindow()
+    }
+    catch { [IntPtr]::Zero }
+}
+
+function Hide-ToolkitConsole {
+    # Hides the PowerShell window while the toolkit window is open: its prompt is busy until the toolkit
+    # closes anyway. Windows Terminal can't hide a tab, so it minimises instead. Leaves alone a window that
+    # is already hidden or minimised (an RMM shell, a shortcut set to start minimised).
+    # Returns the window handle for Restore-ToolkitConsole, or $null when nothing was hidden.
+    $handle = Get-ToolkitConsoleWindow
+    if ($handle -eq [IntPtr]::Zero) { return $null }
+    try {
+        if (-not [EtkConsoleWindow]::IsWindowVisible($handle) -or [EtkConsoleWindow]::IsIconic($handle)) { return $null }
+        [void][EtkConsoleWindow]::ShowWindow($handle, 0)   # SW_HIDE
+        $handle
+    }
+    catch { $null }
+}
+
+function Restore-ToolkitConsole {
+    # Brings back a window Hide-ToolkitConsole hid: shown again (SW_SHOW), or restored if Windows Terminal
+    # minimised it (SW_RESTORE). Never fails: the toolkit has closed by now either way.
+    param($Handle)
+    if ($null -eq $Handle) { return }
+    try {
+        $show = if ([EtkConsoleWindow]::IsIconic($Handle)) { 9 } else { 5 }
+        [void][EtkConsoleWindow]::ShowWindow($Handle, $show)
+    }
+    catch { $null = $_ }
+}
+
 function Show-EndpointToolkitGui {
     <#
     .SYNOPSIS
@@ -688,6 +742,9 @@ function Show-EndpointToolkitGui {
         Pick a tool on the left (or search) to see what it does, any warning and its options, then click Run.
         Each tool runs in its own PowerShell window, with a UAC prompt first if it needs admin, so you can
         carry on in this one. The bottom panel shows how each run finished.
+
+        The PowerShell window it was started from hides while the toolkit window is open (Windows Terminal
+        minimises it instead) and comes back when you close the toolkit.
 
         Where there's no desktop to draw on (remote session, RMM shell, Server Core) it opens the console
         menu instead. To always get the console menu, use Show-EndpointToolkit (etkc).
@@ -720,6 +777,8 @@ function Show-EndpointToolkitGui {
         Show-EndpointToolkit
         return
     }
-    Write-Host 'Toolkit window open. Close it to get this prompt back.' -ForegroundColor DarkGray
-    [void]$window.ShowDialog()
+    Write-Host 'Toolkit window open. This PowerShell window hides until you close it.' -ForegroundColor DarkGray
+    $console = Hide-ToolkitConsole
+    try { [void]$window.ShowDialog() }
+    finally { Restore-ToolkitConsole -Handle $console }
 }
