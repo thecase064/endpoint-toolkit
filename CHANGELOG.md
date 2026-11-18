@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.15.0 - 2026-11-18
+
+### Added
+- **Error code explainer** (`Resolve-ErrorCode`, Diagnose, read-only, offline). For "what does 0x800F0922 mean?". Paste one or more codes, or the whole error message, and every code in it is found and explained:
+  - **Finds:** `0x80070005`, `80070005`, `-2147024891` / `2147942405`, Setup pairs (`0xC1900101 - 0x40017`, any dash), `code 43` / `error 1603` / `exit code 3010`, a number on its own, `AADSTS...`. Ignores GUIDs (correlation IDs), dates, plain 8-digit numbers and Unix times. Each argument is read on its own; the same code is explained once.
+  - **The toolkit's own notes**, with what to do: Windows Update / upgrade, Windows Time, Device Manager problem codes, Dell Command | Update and HP Image Assistant exit codes, Entra join errors. A plain number matches exit / problem codes and its `0x8007...` form, each labelled with where it's from.
+  - **Windows' own name and message** from `certutil -error` (built into Windows), read whatever language its label is in; Windows' message via .NET if certutil is missing or blocked. **NTSTATUS codes** (`0xC0000005`) mapped to the Windows error they mean (`RtlNtStatusToDosError`), since certutil doesn't cover them.
+  - **Decoded:** a Win32 error wrapped as an HRESULT, the facility (Windows Update, BITS, Setup, BitLocker...), a vendor's own code (customer bit), success / information.
+  - **Setup extend codes** as phase and operation (Microsoft's tables), and **blue screen stop codes** (and their `0x1000...` variants) with the name and usual cause.
+  - `-Quiet` one line per code, `-PassThru`. Exit 1 when no code is found.
+- **`Tools/Shared/ErrorCodes.psd1`:** every code the toolkit explains, in one data file, generated from the tools' own tables, plus the facility, Setup and stop code tables. The tools that already had tables keep them unchanged.
+- `Tools/Shared/README.md` now lists `Get-CurrentUserSid` and `Resolve-AccountSid` (added in 1.13.0) and the shared code file.
+
+### Tests
+- Resolve-ErrorCode, 58 checks with a harness using the real shared code file and faking certutil (English, another language, unknown codes, missing, blocked) and Windows' NTSTATUS mapping. Covered: every way of writing a code, Setup pairs (with an en dash, no spaces, non-Setup results, two HRESULTs, a small first number), code / error / exit code, numbers in sentences, AADSTS (known and not), GUIDs / dates / Unix times ignored, duplicates in one argument and across several; the toolkit's notes (Windows Update, Device Manager, Dell + Device Manager for 1, the HRESULT form of 5, hex not matching problem codes, mixed case, Entra, HP 3010), an unreadable shared file; certutil names and messages, unknown, the fallback; NTSTATUS mapped, unmapped, already known; decoding (Win32, facility 36, unknown facility, vendor, success); stop codes (`0x0000007e`, `0x1000007E`, `0xC000021A`, `0x133`, never from a decimal); `-Quiet`, order, ASCII.
+- A second run without the fake checks the real P/Invoke code compiles and fails cleanly where ntdll isn't there.
+- Run under UTC, New York and Tokyo time. Twenty-two key behaviours were broken on purpose; each was caught. Testing found two bugs before release: a dash between a small number and another code swallowed the second code, and the Windows line printed `System.Object[]`.
+- **New repo tests:** each tool's own code table must match `ErrorCodes.psd1` exactly (meaning and fix, nothing missing or extra). On Windows (CI) the NTSTATUS C# is compiled for real under 5.1 and 7 and `0xC0000005` must map to error 998, and the explainer runs against the real certutil: `0x80070005` must come back as `ERROR_ACCESS_DENIED`, `0x800F0922` with the toolkit note and Windows' own, `0xC0000005` explained, `code 43` with the Device Manager note and Windows error 43.
+
 ## 1.14.0 - 2026-11-18
 
 ### Added

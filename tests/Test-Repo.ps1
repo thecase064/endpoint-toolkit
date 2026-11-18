@@ -496,6 +496,64 @@ else {
 }
 
 # ------------------------------------------------------------------------------------------------
+Write-Host "`nError codes: the shared table matches each tool's own" -ForegroundColor Cyan
+$codeFile = Import-PowerShellDataFile -LiteralPath (Join-Path $root 'Tools/Shared/ErrorCodes.psd1')
+$codeSpecs = @(
+    @{ File = 'Tools/WindowsUpdateStatus/Get-WindowsUpdateStatus.ps1'; Var = 'KnownCodes'; Source = 'Windows Update / upgrade' }
+    @{ File = 'Tools/TimeSync/Repair-TimeSync.ps1'; Var = 'W32Errors'; Source = 'Windows Time (w32tm)' }
+    @{ File = 'Tools/AudioCheck/Get-AudioStatus.ps1'; Var = 'ProblemCodes'; Source = 'Device Manager problem code' }
+    @{ File = 'Tools/OEMUpdates/Invoke-OEMUpdate.ps1'; Var = 'dellCodes'; Source = 'Dell Command | Update exit code' }
+    @{ File = 'Tools/OEMUpdates/Invoke-OEMUpdate.ps1'; Var = 'hpCodes'; Source = 'HP Image Assistant exit code' }
+    @{ File = 'Tools/EntraIntuneHealth/Get-EntraIntuneHealth.ps1'; Var = 'KnownErrors'; Source = 'Entra / Intune join' }
+)
+foreach ($cs in $codeSpecs) {
+    $codeAst = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $root $cs.File), [ref]$null, [ref]$null)
+    $assign = $codeAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -eq ('$' + $cs.Var) }, $true) | Select-Object -First 1
+    $toolTable = if ($assign) { $assign.Right.Expression } else { $null }
+    $bad = @()
+    if ($toolTable -is [System.Management.Automation.Language.HashtableAst]) {
+        foreach ($kv in $toolTable.KeyValuePairs) {
+            $k = [string]$kv.Item1.SafeGetValue()
+            $val = $kv.Item2.PipelineElements[0].Expression.SafeGetValue()
+            $meaning = if ($val -is [array]) { $val[0] } else { $val }
+            $fix = if ($val -is [array]) { $val[1] } else { $null }
+            $entry = @($codeFile.Codes | Where-Object { $_.Source -eq $cs.Source -and [string]$_.Code -ceq $k }) | Select-Object -First 1
+            if (-not $entry -or $entry.Meaning -cne $meaning -or ($null -ne $fix -and $entry.Fix -cne $fix)) { $bad += $k }
+        }
+        $inShared = @($codeFile.Codes | Where-Object Source -eq $cs.Source).Count
+        Assert (-not $bad.Count -and $inShared -eq $toolTable.KeyValuePairs.Count) ("{0} `${1}: {2} codes, same as Tools/Shared/ErrorCodes.psd1{3}" -f (Split-Path $cs.File -Leaf), $cs.Var, $toolTable.KeyValuePairs.Count, $(if ($bad.Count) { ' -> differs: ' + ($bad -join ', ') } elseif ($inShared -ne $toolTable.KeyValuePairs.Count) { " -> the shared file has $inShared" } else { '' }))
+    }
+    else { Assert $false "$($cs.File) still has `$$($cs.Var) as a plain table" }
+}
+Assert (@($codeFile.Codes | Where-Object { -not $_.Code -or -not $_.Source -or -not $_.Meaning }).Count -eq 0) 'every shared code has a code, a source and a meaning'
+
+Write-Host "`nError code explainer on real Windows (certutil, the NTSTATUS mapping)" -ForegroundColor Cyan
+$errAst = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'Tools/ErrorCodes/Resolve-ErrorCode.ps1'), [ref]$null, [ref]$null)
+$ntAssign = $errAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -eq '$NativeCs' }, $true) | Select-Object -First 1
+$ntCs = if ($ntAssign) { [string]$ntAssign.Right.Expression.Value } else { '' }
+Assert ($ntCs -match 'RtlNtStatusToDosError' -and $ntCs -notmatch '\$"|\?\.|=>|nameof\(|out var ') 'the NTSTATUS C# is there and sticks to C# 5'
+if ($env:OS -ne 'Windows_NT') {
+    Write-Host '  SKIP  needs Windows; CI runs this part' -ForegroundColor DarkGray
+}
+else {
+    $ntType = $null
+    try { Add-Type -TypeDefinition $ntCs.Replace('namespace EtkErrorCode', 'namespace EtkErrorCodeRepoTest') -Language CSharp -ErrorAction Stop; $ntType = 'EtkErrorCodeRepoTest.Native' -as [type] }
+    catch { Write-Host "  $($_.Exception.Message)" -ForegroundColor Red }
+    $mapped = if ($ntType) { $ntType::RtlNtStatusToDosError(-1073741819) } else { $null }
+    Assert ($mapped -eq 998) "it compiles on PowerShell $($PSVersionTable.PSVersion.Major), and Windows maps 0xC0000005 to error 998 ($mapped)"
+    $explained = @(& (Join-Path $root 'Tools/ErrorCodes/Resolve-ErrorCode.ps1') 0x80070005 0x800F0922 0xC0000005 'code 43' -PassThru 6>$null)
+    $byIn = @{}; foreach ($e in $explained) { $byIn[$e.Input] = $e }
+    $ad = $byIn['0x80070005']
+    Assert ($ad -and $ad.WindowsName -eq 'ERROR_ACCESS_DENIED' -and $ad.WindowsText -and $ad.WindowsVia -eq 'certutil') "certutil read: 0x80070005 = $($ad.WindowsName) - $($ad.WindowsText) (via $($ad.WindowsVia))"
+    $cbs = $byIn['0x800F0922']
+    Assert ($cbs -and $cbs.Toolkit.Count -ge 1 -and ($cbs.WindowsName -or $cbs.WindowsText)) "0x800F0922: toolkit note and Windows' own ($($cbs.WindowsName) - $($cbs.WindowsText))"
+    $av = $byIn['0xC0000005']
+    Assert ($av -and ($av.WindowsText -or $av.NtWin32 -eq 998)) "0xC0000005 explained ($(if ($av.WindowsText) { "certutil: $($av.WindowsName) $($av.WindowsText)" } else { "mapped to $($av.NtWin32): $($av.NtText)" }))"
+    $dm = $byIn['43']
+    Assert ($dm -and @($dm.Toolkit | Where-Object Source -eq 'Device Manager problem code').Count -and $dm.WindowsText) "code 43: Device Manager note, and Windows error 43 ($($dm.WindowsName) - $($dm.WindowsText))"
+}
+
+# ------------------------------------------------------------------------------------------------
 Write-Host "`nLaunchers" -ForegroundColor Cyan
 Assert ((Get-ScriptParameterName (Join-Path $root 'install.ps1')) -contains 'Console') 'install.ps1 has -Console'
 Assert ((Get-ScriptParameterName (Join-Path $root 'Start-Toolkit.ps1')) -contains 'Console') 'Start-Toolkit.ps1 has -Console'

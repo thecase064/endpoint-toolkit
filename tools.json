@@ -703,6 +703,31 @@
       "mode": "child"
     },
     {
+      "id": "error-codes",
+      "name": "Error code explainer",
+      "category": "Diagnose",
+      "icon": "E897",
+      "path": "Tools/ErrorCodes/Resolve-ErrorCode.ps1",
+      "command": "Resolve-ErrorCode",
+      "description": "Explains Windows error codes, offline. Paste one or more codes, or the whole error message: hex, decimal, Setup pairs like 0xC1900101 - 0x40017, Device Manager and exit codes, AADSTS errors. For each it shows what the toolkit already knows (Windows Update / upgrade, Windows Time, Device Manager, Dell and HP update tools, Entra join) with what to do, Windows' own name and message, what the number itself encodes, the Setup phase and operation, and blue screen stop code names.",
+      "brief": [
+        "Explains Windows error codes, offline: paste a code or the whole error message (0x80070005,",
+        "-2147024891, 0xC1900101 - 0x40017, code 43, exit code 3010, AADSTS...). Shows the toolkit's",
+        "own note and fix, Windows' own name and text, the Setup phase and blue screen names. Read-only."
+      ],
+      "admin": false,
+      "readOnly": true,
+      "mode": "child",
+      "prompts": [
+        {
+          "param": "Code",
+          "type": "string",
+          "prompt": "Error code(s), or paste the whole error message",
+          "required": true
+        }
+      ]
+    },
+    {
       "id": "bitlocker-backup",
       "name": "BitLocker key backup check",
       "category": "Diagnose",

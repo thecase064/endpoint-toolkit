@@ -5,7 +5,7 @@
 A PowerShell toolkit for Windows endpoint work in an MSP: build a new laptop and bring its drivers and BIOS up to date, repair a broken one (Teams, OneDrive, printing, Office activation, Windows Update, the clock), check its Entra, Intune and BitLocker health, find out where the disk space went, cut through event log noise and report on M365 licensing and usage. You can run it from a window, from a console menu that works over remote shells, or as a module, all from a single line pasted into any machine. No USB stick, nothing to copy across.
 
 ```
-┌ Endpoint Toolkit v1.14.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
+┌ Endpoint Toolkit v1.15.0 ───────────────────  PC-1234 · PS 5.1   Not elevated   [Relaunch as admin]   _  []  X ┐
 │ [ Search tools          ]   │  Print spooler clear   [Changes the machine] [Needs admin]                       │
 │ Build                       │                                                                                  │
 │   New device setup   admin  │  Clears stuck print jobs: stops the Print Spooler, deletes the queued jobs,      │
@@ -34,7 +34,7 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
 
 ```
   ======================================================================
-   ENDPOINT TOOLKIT v1.14.0                  thecase064/endpoint-toolkit
+   ENDPOINT TOOLKIT v1.15.0                  thecase064/endpoint-toolkit
    Host: PC-1234   Elevated: YES   PS 5.1   Source: main (2026-11-04 12:00)
   ======================================================================
 
@@ -67,15 +67,16 @@ Over `Enter-PSSession`, an RMM remote shell or Server Core there's no desktop fo
     22  Entra / Intune health check
     23  Windows Update status (why no updates?)
     24  Audio check (no sound / mic)
-    25  BitLocker key backup check                    admin
-    26  Device inventory (hardware + OS)
-    27  Disk usage report (HTML)
-    28  Disk usage browser (GUI)                      window
-    29  Event triage (GUI)                            window
+    25  Error code explainer
+    26  BitLocker key backup check                    admin
+    27  Device inventory (hardware + OS)
+    28  Disk usage report (HTML)
+    29  Disk usage browser (GUI)                      window
+    30  Event triage (GUI)                            window
 
    REPORT
-    30  M365 licence report (Excel)
-    31  Exchange + Planner usage report
+    31  M365 licence report (Excel)
+    32  Exchange + Planner usage report
 
      Q  Quit
 ```
@@ -115,7 +116,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 
 | Want to... | Run |
 |---|---|
-| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.14.0` (add `-Console` for the console menu) |
+| Pin a release (recommended on client machines) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Ref v1.15.0` (add `-Console` for the console menu) |
 | Install as a module for everyday use | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/thecase064/endpoint-toolkit/main/install.ps1))) -Install` then `Import-Module EndpointToolkit; etk` (window) or `etkc` (console menu) |
 | Double-click instead of pasting | Copy `Launch-Toolkit.cmd` anywhere (desktop, USB, file share) and right-click > **Run as administrator** |
 | Run from a clone or a USB copy | `powershell -ExecutionPolicy Bypass -File .\Start-Toolkit.ps1` (add `-Console` for the console menu) |
@@ -147,6 +148,7 @@ Both download the toolkit to `C:\ProgramData\EndpointToolkit\` and unblock it. T
 | | [Entra / Intune health check](Tools/EntraIntuneHealth) | Join state, device auth, PRT, MDM enrolment, Intune certificate expiry, last check-in, push service, IME, event log errors and endpoint reachability, each with a fix hint. Can force a sync or zip the logs for escalation. Exit code 1 on failure, so it doubles as a remediation detection script. | `Get-EntraIntuneHealth` |
 | | [Windows Update status](Tools/WindowsUpdateStatus) | "Why isn't it updating?" Version and edition against Microsoft's end-of-updates dates, last patch and last successful scan, failed updates from Windows Update's own history with each error code explained, who manages updates (Intune, Group Policy, WSUS, an RMM agent), automatic updates off, pauses, deferrals and version pins, whether the WSUS server answers, disabled update services, disk space, and Windows 11 / feature update readiness: Windows' own Red / Orange / Yellow / Green verdict with the reason, Microsoft safeguard holds, Setup's compatibility report and SetupDiag's verdict on the last failed upgrade. Read-only; `-Watch` then follows update activity live, so you can tell stuck from slow. | `Get-WindowsUpdateStatus` |
 | | [Audio check](Tools/AudioCheck) | "No sound" or "my mic doesn't work". Checks the Windows Audio services; the playback and recording devices: which is the default, its volume and mute, ones disabled in Sound settings or unplugged, calls going to a different device, a Bluetooth headset stuck in hands-free mode; microphone privacy for the PC, the signed-in user (even when run as admin or SYSTEM), desktop apps and new Teams, plus the policy; and the sound hardware in Device Manager with problem codes and driver versions. Read-only. | `Get-AudioStatus` |
+| | [Error code explainer](Tools/ErrorCodes) | "What does 0x800F0922 mean?" Paste one or more codes, or the whole error message: hex, decimal, Setup pairs like `0xC1900101 - 0x40017`, Device Manager and exit codes, `AADSTS` errors. Offline. Shows what the toolkit already knows with what to do (Windows Update / upgrade, Windows Time, Device Manager, Dell and HP update tools, Entra join), Windows' own name and message, what the number encodes (a Win32 error, which facility, a vendor's own code), the Setup phase and operation, and blue screen stop code names. | `Resolve-ErrorCode` |
 | | [BitLocker key backup check](Tools/BitLockerBackup) | Is every recovery key backed up to Entra? Checks each key against the BitLocker event log (845/846, with the error explained); `-Fix` backs up the missing ones. Never shows the keys themselves. | `Test-BitLockerKeyBackup` |
 | | [Device inventory](Tools/DeviceInventory) | Model, serial, BIOS, OS build, every RAM stick, disks with health and wear, monitors with serials, battery wear, network, TPM and Secure Boot. Console, HTML or JSON. | `Get-DeviceInventory` |
 | | [Disk usage report](Tools/DiskUsage) | TreeSize-style scan with no install or licence: biggest folders by their own content, biggest files, known cleanup targets flagged safe/caution, self-contained HTML report. Works over `Invoke-Command`. | `Get-DiskUsageReport` |
@@ -172,6 +174,7 @@ Compare-DeviceReport -Ticket 123456
 Get-EntraIntuneHealth -Sync
 Get-WindowsUpdateStatus -Html -Watch
 Get-AudioStatus -Quiet
+Resolve-ErrorCode 'We couldn''t install Windows 11. 0xC1900101 - 0x40017'
 Repair-TimeSync -CheckOnly
 Remove-StaleProfile -Remove -OlderThanDays 180
 Get-DeviceInventory -Html
