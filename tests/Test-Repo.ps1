@@ -541,6 +541,10 @@ else {
     catch { Write-Host "  $($_.Exception.Message)" -ForegroundColor Red }
     $mapped = if ($ntType) { $ntType::RtlNtStatusToDosError(-1073741819) } else { $null }
     Assert ($mapped -eq 998) "it compiles on PowerShell $($PSVersionTable.PSVersion.Major), and Windows maps 0xC0000005 to error 998 ($mapped)"
+    foreach ($cuArg in '0x80070005', '0x800F0922', '0xC0000005', '43', '0x80240016') {
+        Write-Host "  INFO  certutil -error $cuArg says:" -ForegroundColor DarkGray
+        try { & certutil -error $cuArg 2>&1 | ForEach-Object { Write-Host "          $_" -ForegroundColor DarkGray } } catch { Write-Host "          $($_.Exception.Message)" -ForegroundColor DarkGray }
+    }
     $explained = @(& (Join-Path $root 'Tools/ErrorCodes/Resolve-ErrorCode.ps1') 0x80070005 0x800F0922 0xC0000005 'code 43' -PassThru 6>$null)
     $byIn = @{}; foreach ($e in $explained) { $byIn[$e.Input] = $e }
     $ad = $byIn['0x80070005']
